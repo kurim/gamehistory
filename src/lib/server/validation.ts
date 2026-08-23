@@ -60,7 +60,15 @@ function parseLookupGameId(e: LookupGame): number | null {
 	return null;
 }
 
-export function parseGameLookupJson(raw: string): GameInput[] | { error: string } {
+export type GameLookupImportResult = { games: GameInput[]; skipped: number };
+
+/**
+ * Entries that are `null` or missing required fields are skipped rather than
+ * aborting the whole import — the `game-lookups` (multi-title) skill returns
+ * a `null` placeholder for titles it couldn't resolve, keeping array
+ * positions stable, and that shouldn't sink the rest of the batch.
+ */
+export function parseGameLookupJson(raw: string): GameLookupImportResult | { error: string } {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(raw);
@@ -72,19 +80,21 @@ export function parseGameLookupJson(raw: string): GameInput[] | { error: string 
 	if (entries.length === 0) return { error: 'JSON enthält keine Einträge.' };
 
 	const games: GameInput[] = [];
-	for (const [i, entry] of entries.entries()) {
+	let skipped = 0;
+	for (const entry of entries) {
 		if (typeof entry !== 'object' || entry === null) {
-			return { error: `Eintrag ${i + 1} ist kein Objekt.` };
+			skipped++;
+			continue;
 		}
 		const e = entry as LookupGame;
 		const name = typeof e.name === 'string' ? e.name.trim() : '';
 		const category = typeof e.category === 'string' ? e.category.trim() : '';
 		const year = typeof e.year === 'number' ? e.year : Number(e.year);
 
-		if (!name) return { error: `Eintrag ${i + 1}: "name" fehlt.` };
-		if (!Number.isFinite(year))
-			return { error: `Eintrag ${i + 1}: "year" fehlt oder ist ungültig.` };
-		if (!category) return { error: `Eintrag ${i + 1}: "category" fehlt.` };
+		if (!name || !category || !Number.isFinite(year)) {
+			skipped++;
+			continue;
+		}
 
 		const description =
 			(typeof e.description === 'string' && e.description.trim()) ||
@@ -106,5 +116,7 @@ export function parseGameLookupJson(raw: string): GameInput[] | { error: string 
 		});
 	}
 
-	return games;
+	if (games.length === 0) return { error: 'Keine gültigen Einträge im JSON gefunden.' };
+
+	return { games, skipped };
 }

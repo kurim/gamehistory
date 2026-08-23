@@ -59,7 +59,7 @@ export const actions: Actions = {
 		if ('error' in parsed) return fail(400, { error: parsed.error });
 
 		let coverFailures = 0;
-		for (const game of parsed) {
+		for (const game of parsed.games) {
 			if (game.gameId && !game.coverUrl) {
 				try {
 					const resolved = await downloadGridForGame(game.gameId);
@@ -74,7 +74,12 @@ export const actions: Actions = {
 			}
 			await createGame(game);
 		}
-		return { success: true, imported: parsed.length, coverFailures };
+		return {
+			success: true,
+			imported: parsed.games.length,
+			skipped: parsed.skipped,
+			coverFailures
+		};
 	},
 
 	updateAppearance: async ({ request }) => {
