@@ -103,6 +103,16 @@ Das Image enthält nur Code, `node_modules` und den Build — `.env` und `data/`
 heruntergeladene Cover) bleiben außerhalb und werden erst beim Start eingebunden. Dadurch lässt
 sich das Image neu bauen/deployen, ohne Config oder Daten anzufassen.
 
+Einmalige Einrichtung (legt `data/` an und fragt interaktiv Admin-Zugangsdaten,
+`ORIGIN` und `PORT` ab, um `.env` zu erzeugen):
+
+```bash
+make setup                              # Standardpfad /home/docker/gamehistory
+make setup DATA_PATH=/anderer/pfad      # abweichender Pfad
+```
+
+`make setup` überschreibt eine bereits vorhandene `.env` nicht. Alternativ manuell:
+
 ```bash
 cp .env.example .env   # ausfüllen, siehe oben — PORT hier auf 3000 lassen
 mkdir -p data
