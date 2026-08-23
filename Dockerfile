@@ -13,7 +13,14 @@ COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+# SvelteKit's postbuild analysis step imports every server module in a bare
+# Node process (no .env loaded, matching .dockerignore excluding it from the
+# build context). db/index.ts eagerly requires DATABASE_URL to construct the
+# sqlite client, so give it a throwaway value just to get past that check —
+# the real value is injected as a container env var at runtime and takes
+# over (see docker-compose.yml's `env_file`).
+ENV DATABASE_URL=file:./build-analysis-placeholder.db
+RUN npm run build && rm -f build-analysis-placeholder.db
 RUN npm prune --omit=dev
 
 # ---- Runtime stage --------------------------------------------------------
