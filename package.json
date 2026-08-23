@@ -1,0 +1,58 @@
+{
+	"name": "gamehistory",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
+		"db:push": "drizzle-kit push",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@sveltejs/adapter-node": "^5.5.4",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@tailwindcss/forms": "^0.5.11",
+		"@tailwindcss/vite": "^4.3.0",
+		"@types/better-sqlite3": "^7.6.13",
+		"@types/node": "^24",
+		"drizzle-kit": "^0.31.10",
+		"drizzle-orm": "^0.45.2",
+		"eslint": "^10.4.1",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.19.0",
+		"globals": "^17.6.0",
+		"prettier": "^3.8.3",
+		"prettier-plugin-svelte": "^4.1.0",
+		"prettier-plugin-tailwindcss": "^0.8.0",
+		"svelte": "^5.56.1",
+		"svelte-check": "^4.6.0",
+		"tailwindcss": "^4.3.0",
+		"tsx": "^4.23.12",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.60.1",
+		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"argon2": "^0.45.1",
+		"better-sqlite3": "^13.0.2",
+		"jose": "^6.2.10"
+	},
+	"allowScripts": {
+		"esbuild@0.18.20": true,
+		"esbuild@0.25.12": true,
+		"esbuild@0.28.2": true,
+		"argon2@0.45.1": true,
+		"better-sqlite3@13.0.3": true
+	}
+}
