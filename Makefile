@@ -6,83 +6,76 @@
 # auf dem Zielhost.
 #
 # Im Repo-Root ausführen (dort liegen Makefile, Dockerfile und
-# docker-compose.yml nebeneinander).
+# docker-compose.yml nebeneinander). `make setup` fragt interaktiv nach dem
+# Datenpfad (Vorschlag per DATA_PATH überschreibbar); .env und data/ landen
+# dort, auch wenn das vom Repo-Verzeichnis abweicht.
 #
 # Nutzung:
-#   make setup                                  # Standardpfad /home/docker/gamehistory
-#   make setup DATA_PATH=/anderer/pfad           # abweichender Pfad
+#   make setup                                  # fragt nach dem Pfad, Vorschlag /home/docker/gamehistory
+#   make setup DATA_PATH=/anderer/pfad           # abweichender Vorschlag für die Nachfrage
 
 DATA_PATH ?= /home/docker/gamehistory
-DATA_DIR  := $(DATA_PATH)/data
-ENV_FILE  := $(DATA_PATH)/.env
+COMPOSE   := docker compose -f "$(CURDIR)/docker-compose.yml"
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup data-dir env docker-build docker-start
+.PHONY: help setup
 
 help:
 	@echo "Verfügbare Ziele:"
-	@echo "  make setup       - data-dir + env + docker-build + docker-start (komplett)"
-	@echo "  make data-dir    - legt $(DATA_DIR) an"
-	@echo "  make env         - fragt ORIGIN/PORT ab, erzeugt $(ENV_FILE)"
-	@echo "  make docker-build - baut das Image (docker compose build)"
-	@echo "  make docker-start - fragt, ob der Container gestartet werden soll"
+	@echo "  make setup   - fragt Datenpfad, ORIGIN, PORT ab, erzeugt data/ + .env,"
+	@echo "                 baut das Image und fragt, ob der Container gestartet werden soll"
 	@echo ""
 	@echo "Admin-Zugang wird NICHT hier angelegt — das passiert beim ersten"
 	@echo "Öffnen der App unter /setup."
 	@echo ""
-	@echo "Pfad überschreiben: make setup DATA_PATH=/anderer/pfad"
+	@echo "Pfad-Vorschlag überschreiben: make setup DATA_PATH=/anderer/pfad"
 
-setup: data-dir env docker-build docker-start
-
-data-dir:
-	@mkdir -p "$(DATA_DIR)"
-	@echo "Datenverzeichnis angelegt: $(DATA_DIR)"
-
-env:
-	@if [ -f "$(ENV_FILE)" ]; then \
-		echo ".env existiert bereits unter $(ENV_FILE) — wird nicht überschrieben."; \
-		exit 0; \
-	fi; \
-	mkdir -p "$(DATA_PATH)"; \
-	read -p "Öffentliche URL, ORIGIN [https://games.example.com]: " origin; \
-	origin=$${origin:-https://games.example.com}; \
-	read -p "Port [3000]: " port; \
-	port=$${port:-3000}; \
-	if command -v ss >/dev/null 2>&1; then \
-		port_free() { ! ss -Htln 2>/dev/null | grep -qE ":$$1([[:space:]]|$$)"; }; \
-		if ! port_free "$$port"; then \
-			echo "Port $$port ist bereits belegt."; \
-			alt=$$port; tries=0; \
-			while ! port_free "$$alt" && [ "$$tries" -lt 50 ]; do \
-				alt=$$((alt + 1)); tries=$$((tries + 1)); \
-			done; \
-			read -p "Alternativer freier Port [$$alt]: " chosen; \
-			port=$${chosen:-$$alt}; \
-		fi; \
+setup:
+	@read -p "Verzeichnis für .env und data/ [$(DATA_PATH)]: " data_path; \
+	data_path=$${data_path:-$(DATA_PATH)}; \
+	data_dir="$$data_path/data"; \
+	env_file="$$data_path/.env"; \
+	mkdir -p "$$data_dir"; \
+	echo "Datenverzeichnis angelegt: $$data_dir"; \
+	if [ -f "$$env_file" ]; then \
+		echo ".env existiert bereits unter $$env_file — wird nicht überschrieben."; \
 	else \
-		echo "Hinweis: 'ss' nicht gefunden — Port-Verfügbarkeit wird nicht geprüft."; \
+		read -p "Öffentliche URL, ORIGIN [https://games.example.com]: " origin; \
+		origin=$${origin:-https://games.example.com}; \
+		read -p "Port [3000]: " port; \
+		port=$${port:-3000}; \
+		if command -v ss >/dev/null 2>&1; then \
+			port_free() { ! ss -Htln 2>/dev/null | grep -qE ":$$1([[:space:]]|$$)"; }; \
+			if ! port_free "$$port"; then \
+				echo "Port $$port ist bereits belegt."; \
+				alt=$$port; tries=0; \
+				while ! port_free "$$alt" && [ "$$tries" -lt 50 ]; do \
+					alt=$$((alt + 1)); tries=$$((tries + 1)); \
+				done; \
+				read -p "Alternativer freier Port [$$alt]: " chosen; \
+				port=$${chosen:-$$alt}; \
+			fi; \
+		else \
+			echo "Hinweis: 'ss' nicht gefunden — Port-Verfügbarkeit wird nicht geprüft."; \
+		fi; \
+		session_secret=$$(openssl rand -base64 48); \
+		{ \
+			echo "DATABASE_URL=\"file:./data/games.db\""; \
+			echo "ADMIN_USER=\"\""; \
+			echo "ADMIN_PASSWORD_HASH=\"\""; \
+			echo "SESSION_SECRET=\"$$session_secret\""; \
+			echo "STEAMGRIDDB_API_KEY=\"\""; \
+			echo "ORIGIN=\"$$origin\""; \
+			echo "PORT=$$port"; \
+		} > "$$env_file"; \
+		chmod 600 "$$env_file"; \
+		echo ".env erstellt unter $$env_file"; \
+		echo "Admin-Konto beim ersten App-Aufruf unter $$origin/setup anlegen."; \
 	fi; \
-	session_secret=$$(openssl rand -base64 48); \
-	{ \
-		echo "DATABASE_URL=\"file:./data/games.db\""; \
-		echo "ADMIN_USER=\"\""; \
-		echo "ADMIN_PASSWORD_HASH=\"\""; \
-		echo "SESSION_SECRET=\"$$session_secret\""; \
-		echo "STEAMGRIDDB_API_KEY=\"\""; \
-		echo "ORIGIN=\"$$origin\""; \
-		echo "PORT=$$port"; \
-	} > "$(ENV_FILE)"; \
-	chmod 600 "$(ENV_FILE)"; \
-	echo ".env erstellt unter $(ENV_FILE)"; \
-	echo "Admin-Konto beim ersten App-Aufruf unter $$origin/setup anlegen."
-
-docker-build:
-	docker compose build
-
-docker-start:
-	@read -p "Docker-Container jetzt starten (docker compose up -d)? [y/N] " start_now; \
+	$(COMPOSE) --project-directory "$$data_path" build; \
+	read -p "Docker-Container jetzt starten (docker compose up -d)? [y/N] " start_now; \
 	case "$$start_now" in \
-		[yY]*) docker compose up -d ;; \
-		*) echo "Übersprungen. Später starten mit: docker compose up -d" ;; \
+		[yY]*) $(COMPOSE) --project-directory "$$data_path" up -d ;; \
+		*) echo "Übersprungen. Später starten mit: $(COMPOSE) --project-directory \"$$data_path\" up -d" ;; \
 	esac

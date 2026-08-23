@@ -38,10 +38,21 @@ cp .env.example .env
 
 ## Datenbank
 
-Schema per Drizzle-Migration anlegen/aktualisieren:
+Die App wendet die versionierten Migrationen unter `drizzle/` bei jedem Start automatisch an
+(`src/lib/server/db/index.ts`) — auf einer frischen DB werden `games`/`settings` beim ersten
+Boot angelegt, kein manueller Schritt nötig, egal ob lokal oder im Container.
+
+Für die Schema-Entwicklung lokal (`schema.ts` ändern → sofort gegen die Dev-DB testen, ohne erst
+eine Migration zu erzeugen):
 
 ```bash
 npm run db:push
+```
+
+Sobald `schema.ts` fertig geändert ist, eine echte Migration für Produktion erzeugen und committen:
+
+```bash
+npm run db:generate
 ```
 
 Startdaten werden nicht mitgeliefert — Spiele werden über den Admin-Bereich (`/admin`) erfasst,

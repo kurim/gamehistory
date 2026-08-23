@@ -31,6 +31,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/drizzle ./drizzle
 
 # .env is injected as container environment variables at startup (see
 # docker-compose.yml's `env_file`, or `docker run --env-file`) — it never
