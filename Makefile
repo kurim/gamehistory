@@ -62,8 +62,6 @@ setup:
 		session_secret=$$(openssl rand -base64 48); \
 		{ \
 			echo "DATABASE_URL=\"file:./data/games.db\""; \
-			echo "ADMIN_USER=\"\""; \
-			echo "ADMIN_PASSWORD_HASH=\"\""; \
 			echo "SESSION_SECRET=\"$$session_secret\""; \
 			echo "STEAMGRIDDB_API_KEY=\"\""; \
 			echo "ORIGIN=\"$$origin\""; \
