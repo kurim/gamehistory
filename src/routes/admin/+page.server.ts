@@ -10,10 +10,9 @@ import { parseGameFormData, parseGameLookupJson } from '$lib/server/validation';
 import { SESSION_COOKIE } from '$lib/server/auth/session';
 import { CoverUploadError, saveUploadedCover } from '$lib/server/covers';
 import { downloadGridForGame } from '$lib/server/steamgriddb';
-import { updateAdminPasswordHash, updateAppearance } from '$lib/server/db/settings';
-import { verifyAdminCredentials } from '$lib/server/auth/password';
+import { createAdminAccount, updateAppearance } from '$lib/server/db/settings';
+import { getEffectiveAdminUsername, verifyAdminCredentials } from '$lib/server/auth/password';
 import { isValidHexColor } from '$lib/theme';
-import { env } from '$env/dynamic/private';
 import argon2 from 'argon2';
 
 export const load: PageServerLoad = async () => {
@@ -108,7 +107,8 @@ export const actions: Actions = {
 		const newPassword = String(form.get('newPassword') ?? '');
 		const confirmPassword = String(form.get('confirmPassword') ?? '');
 
-		if (!env.ADMIN_USER) return fail(500, { error: 'ADMIN_USER ist nicht konfiguriert.' });
+		const adminUsername = await getEffectiveAdminUsername();
+		if (!adminUsername) return fail(500, { error: 'Admin-Konto ist nicht konfiguriert.' });
 		if (newPassword.length < 8) {
 			return fail(400, { error: 'Neues Passwort muss mindestens 8 Zeichen haben.' });
 		}
@@ -116,11 +116,14 @@ export const actions: Actions = {
 			return fail(400, { error: 'Passwörter stimmen nicht überein.' });
 		}
 
-		const valid = await verifyAdminCredentials(env.ADMIN_USER, currentPassword);
+		const valid = await verifyAdminCredentials(adminUsername, currentPassword);
 		if (!valid) return fail(400, { error: 'Aktuelles Passwort ist falsch.' });
 
 		const hash = await argon2.hash(newPassword);
-		await updateAdminPasswordHash(hash);
+		// Writes both fields — matters for env-configured deployments too, since
+		// getAdminCredentials()/isAdminConfigured() require the DB to have both
+		// adminUsername and adminPasswordHash before it takes over from .env.
+		await createAdminAccount(adminUsername, hash);
 		return { success: true, passwordChanged: true };
 	},
 

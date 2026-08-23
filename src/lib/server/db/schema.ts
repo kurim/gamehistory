@@ -25,6 +25,7 @@ export const settings = sqliteTable('settings', {
 	heroHeadline: text('hero_headline'),
 	accentColor: text('accent_color'),
 	backgroundColor: text('background_color'),
+	adminUsername: text('admin_username'),
 	adminPasswordHash: text('admin_password_hash')
 });
 

@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Login — {data.settings.siteTitle}</title>
+	<title>Einrichtung — {data.settings.siteTitle}</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-6">
@@ -20,7 +20,10 @@
 		class="relative w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#12101d]/80 p-8 shadow-2xl backdrop-blur-xl"
 	>
 		<img src="/logo-512.png" alt="" class="mx-auto mb-4 h-14 w-14" />
-		<h1 class="mb-6 text-center text-xl font-bold text-[#f4f2fa]">Admin-Login</h1>
+		<h1 class="mb-2 text-center text-xl font-bold text-[#f4f2fa]">Admin-Konto einrichten</h1>
+		<p class="mb-6 text-center text-sm text-[#9c97ad]">
+			Erster Start — leg deinen Admin-Zugang an. Läuft nur einmal.
+		</p>
 
 		<form
 			method="POST"
@@ -58,8 +61,24 @@
 					id="password"
 					name="password"
 					type="password"
-					autocomplete="current-password"
+					autocomplete="new-password"
 					required
+					minlength="8"
+					class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
+				/>
+			</div>
+
+			<div>
+				<label for="confirmPassword" class="mb-1 block text-sm text-[#9c97ad]"
+					>Passwort bestätigen</label
+				>
+				<input
+					id="confirmPassword"
+					name="confirmPassword"
+					type="password"
+					autocomplete="new-password"
+					required
+					minlength="8"
 					class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
 				/>
 			</div>
@@ -69,7 +88,7 @@
 				disabled={loading}
 				class="w-full cursor-pointer rounded-lg bg-gradient-to-r from-accent-600 to-accent-500 px-4 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
 			>
-				{loading ? 'Anmelden…' : 'Anmelden'}
+				{loading ? 'Wird angelegt…' : 'Konto anlegen'}
 			</button>
 		</form>
 	</div>
