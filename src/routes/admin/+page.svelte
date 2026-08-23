@@ -110,7 +110,9 @@
 			<p
 				class="mb-6 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
 			>
-				{form.imported} Spiel(e) importiert.{#if 'skipped' in form && form.skipped}
+				{form.imported} Spiel(e) importiert.{#if 'duplicates' in form && form.duplicates}
+					{form.duplicates} Duplikat(e) übersprungen (Name + Jahr bereits vorhanden).
+				{/if}{#if 'skipped' in form && form.skipped}
 					{form.skipped} Eintrag/Einträge übersprungen (ungültig oder nicht auflösbar).
 				{/if}{#if 'coverFailures' in form && form.coverFailures}
 					{form.coverFailures} Cover konnten nicht von SteamGridDB geladen werden.
