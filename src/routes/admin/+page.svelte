@@ -16,7 +16,7 @@
 		).sort((a, b) => (sortDir === 'asc' ? a.year - b.year : b.year - a.year))
 	);
 
-	type Tab = 'add' | 'list' | 'settings';
+	type Tab = 'import' | 'add' | 'list' | 'settings';
 	let activeTab = $state<Tab>('list');
 
 	let jsonImportLoading = $state(false);
@@ -59,13 +59,23 @@
 		>
 			<button
 				type="button"
+				onclick={() => (activeTab = 'import')}
+				class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors {activeTab ===
+				'import'
+					? 'bg-accent-500/20 text-accent-200'
+					: 'text-[#9c97ad] hover:text-[#f4f2fa]'}"
+			>
+				JSON-Import
+			</button>
+			<button
+				type="button"
 				onclick={() => (activeTab = 'add')}
 				class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors {activeTab ===
 				'add'
 					? 'bg-accent-500/20 text-accent-200'
 					: 'text-[#9c97ad] hover:text-[#f4f2fa]'}"
 			>
-				JSON-Import + Spiel hinzufügen
+				Spiel manuell hinzufügen
 			</button>
 			<button
 				type="button"
@@ -120,11 +130,9 @@
 			</p>
 		{/if}
 
-		{#if activeTab === 'add'}
+		{#if activeTab === 'import'}
 			<!-- JSON Import -->
-			<section
-				class="mb-8 rounded-2xl border border-white/[0.08] bg-[#12101d]/70 p-6 backdrop-blur-md"
-			>
+			<section class="rounded-2xl border border-white/[0.08] bg-[#12101d]/70 p-6 backdrop-blur-md">
 				<h2 class="mb-3 text-lg font-semibold">JSON-Import (game-lookup)</h2>
 				<p class="mb-3 text-sm text-[#9c97ad]">
 					JSON aus dem <code class="text-accent-300">game-lookup</code>-Skill einfügen — einzelnes
@@ -163,7 +171,7 @@
 					</button>
 				</form>
 			</section>
-
+		{:else if activeTab === 'add'}
 			<!-- Add game -->
 			<section class="rounded-2xl border border-white/[0.08] bg-[#12101d]/70 p-6 backdrop-blur-md">
 				<h2 class="mb-3 text-lg font-semibold">Spiel manuell hinzufügen</h2>
