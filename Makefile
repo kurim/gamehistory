@@ -1,6 +1,8 @@
 # Initiale Einrichtung fürs Docker-Deploy — legt data/ und .env außerhalb des
 # Images an (siehe docker-compose.yml). Läuft idempotent: vorhandene .env
-# wird nie überschrieben.
+# wird nie überschrieben. Der Admin-Zugang selbst wird NICHT hier angelegt,
+# sondern beim ersten Öffnen der App unter /setup — braucht daher kein Node
+# auf dem Zielhost.
 #
 # Nutzung:
 #   make setup                                  # Standardpfad /home/docker/gamehistory
@@ -10,11 +12,6 @@ DATA_PATH ?= /home/docker/gamehistory
 DATA_DIR  := $(DATA_PATH)/data
 ENV_FILE  := $(DATA_PATH)/.env
 
-# `read -s` (silent password input) is a bash-ism — POSIX /bin/sh (e.g. dash
-# on Debian/Ubuntu) rejects it with "Illegal option -s". Force bash so the
-# recipe below works regardless of the system's default shell.
-SHELL := /bin/bash
-
 .DEFAULT_GOAL := help
 
 .PHONY: help setup data-dir env
@@ -23,7 +20,10 @@ help:
 	@echo "Verfügbare Ziele:"
 	@echo "  make setup      - data-dir + env (komplette Einrichtung)"
 	@echo "  make data-dir   - legt $(DATA_DIR) an"
-	@echo "  make env        - fragt Zugangsdaten ab, erzeugt $(ENV_FILE)"
+	@echo "  make env        - fragt ORIGIN/PORT ab, erzeugt $(ENV_FILE)"
+	@echo ""
+	@echo "Admin-Zugang wird NICHT hier angelegt — das passiert beim ersten"
+	@echo "Öffnen der App unter /setup."
 	@echo ""
 	@echo "Pfad überschreiben: make setup DATA_PATH=/anderer/pfad"
 
@@ -39,28 +39,20 @@ env:
 		exit 0; \
 	fi; \
 	mkdir -p "$(DATA_PATH)"; \
-	read -p "Admin-Benutzername [admin]: " admin_user; \
-	admin_user=$${admin_user:-admin}; \
-	admin_password=""; \
-	while [ -z "$$admin_password" ]; do \
-		read -s -p "Admin-Passwort: " admin_password; echo; \
-		if [ -z "$$admin_password" ]; then echo "Darf nicht leer sein."; fi; \
-	done; \
 	read -p "Öffentliche URL, ORIGIN [https://games.example.com]: " origin; \
 	origin=$${origin:-https://games.example.com}; \
 	read -p "Port [3000]: " port; \
 	port=$${port:-3000}; \
-	echo "Erzeuge Argon2-Hash und Session-Secret …"; \
-	admin_password_hash=$$(npx tsx scripts/hash-password.ts "$$admin_password"); \
 	session_secret=$$(openssl rand -base64 48); \
 	{ \
 		echo "DATABASE_URL=\"file:./data/games.db\""; \
-		echo "ADMIN_USER=\"$$admin_user\""; \
-		echo "ADMIN_PASSWORD_HASH=\"$$admin_password_hash\""; \
+		echo "ADMIN_USER=\"\""; \
+		echo "ADMIN_PASSWORD_HASH=\"\""; \
 		echo "SESSION_SECRET=\"$$session_secret\""; \
 		echo "STEAMGRIDDB_API_KEY=\"\""; \
 		echo "ORIGIN=\"$$origin\""; \
 		echo "PORT=$$port"; \
 	} > "$(ENV_FILE)"; \
 	chmod 600 "$(ENV_FILE)"; \
-	echo ".env erstellt unter $(ENV_FILE)"
+	echo ".env erstellt unter $(ENV_FILE)"; \
+	echo "Admin-Konto beim ersten App-Aufruf unter $$origin/setup anlegen."

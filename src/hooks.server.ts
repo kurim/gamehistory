@@ -1,5 +1,6 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { SESSION_COOKIE, verifySessionToken } from '$lib/server/auth/session';
+import { isAdminConfigured } from '$lib/server/auth/password';
 import { getSettings } from '$lib/server/db/settings';
 import { deriveAccentShades } from '$lib/theme';
 
@@ -7,8 +8,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get(SESSION_COOKIE);
 	event.locals.user = token ? await verifySessionToken(token) : null;
 
-	if (event.url.pathname.startsWith('/admin') && !event.locals.user) {
-		const redirectTo = event.url.pathname + event.url.search;
+	const { pathname } = event.url;
+	if (pathname === '/setup' || pathname === '/login' || pathname.startsWith('/admin')) {
+		const configured = await isAdminConfigured();
+		if (!configured && pathname !== '/setup') {
+			throw redirect(303, '/setup');
+		}
+		if (configured && pathname === '/setup') {
+			throw redirect(303, '/login');
+		}
+	}
+
+	if (pathname.startsWith('/admin') && !event.locals.user) {
+		const redirectTo = pathname + event.url.search;
 		throw redirect(303, `/login?redirectTo=${encodeURIComponent(redirectTo)}`);
 	}
 

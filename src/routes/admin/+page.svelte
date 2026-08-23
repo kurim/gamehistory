@@ -110,7 +110,9 @@
 			<p
 				class="mb-6 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
 			>
-				{form.imported} Spiel(e) importiert.{#if 'coverFailures' in form && form.coverFailures}
+				{form.imported} Spiel(e) importiert.{#if 'skipped' in form && form.skipped}
+					{form.skipped} Eintrag/Einträge übersprungen (ungültig oder nicht auflösbar).
+				{/if}{#if 'coverFailures' in form && form.coverFailures}
 					{form.coverFailures} Cover konnten nicht von SteamGridDB geladen werden.
 				{/if}
 			</p>
@@ -133,15 +135,24 @@
 		{#if activeTab === 'import'}
 			<!-- JSON Import -->
 			<section class="rounded-2xl border border-white/[0.08] bg-[#12101d]/70 p-6 backdrop-blur-md">
-				<h2 class="mb-3 text-lg font-semibold">JSON-Import (game-lookup)</h2>
+				<h2 class="mb-3 text-lg font-semibold">JSON-Import</h2>
 				<p class="mb-3 text-sm text-[#9c97ad]">
-					JSON aus dem <code class="text-accent-300">game-lookup</code>-Skill einfügen — einzelnes
-					Objekt oder Array.
+					JSON aus dem <code class="text-accent-300">game-lookup</code>-Skill (ein Titel, liefert
+					ein einzelnes Objekt) oder <code class="text-accent-300">game-lookups</code>-Skill
+					(mehrere kommagetrennte Titel, liefert ein Array) einfügen — beide Formate werden
+					unterstützt.
 					<a
 						href="/game-lookup.skill"
 						download
 						rel="external"
-						class="text-accent-300 hover:underline">Skill herunterladen</a
+						class="text-accent-300 hover:underline">game-lookup herunterladen</a
+					>
+					·
+					<a
+						href="/game-lookups.skill"
+						download
+						rel="external"
+						class="text-accent-300 hover:underline">game-lookups herunterladen</a
 					>
 				</p>
 				<form
@@ -158,8 +169,8 @@
 				>
 					<textarea
 						name="json"
-						rows="6"
-						placeholder={'{ "name": "...", "year": 2005, "category": "...", ... }'}
+						rows="8"
+						placeholder={'{ "name": "...", "year": 2005, "category": "...", ... }\noder [{ ... }, { ... }]'}
 						class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 font-mono text-sm text-[#f4f2fa] outline-none focus:border-accent-400/50"
 						required></textarea>
 					<button

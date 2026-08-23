@@ -35,9 +35,22 @@ export async function getSettings(): Promise<ResolvedSettings> {
 	};
 }
 
-export async function getAdminPasswordHash(): Promise<string | null> {
+/** Both fields must be set — a lone leftover hash without a username doesn't count as configured. */
+export async function getAdminCredentials(): Promise<{ username: string; hash: string } | null> {
 	const [row] = await db.select().from(settings).where(eq(settings.id, SETTINGS_ID));
-	return row?.adminPasswordHash ?? null;
+	if (row?.adminUsername && row?.adminPasswordHash) {
+		return { username: row.adminUsername, hash: row.adminPasswordHash };
+	}
+	return null;
+}
+
+/** Creates the admin account on first run — see the `/setup` route. */
+export async function createAdminAccount(username: string, hash: string): Promise<void> {
+	await ensureRow();
+	await db
+		.update(settings)
+		.set({ adminUsername: username, adminPasswordHash: hash })
+		.where(eq(settings.id, SETTINGS_ID));
 }
 
 async function ensureRow() {
@@ -58,9 +71,4 @@ export async function updateAppearance(data: {
 }): Promise<void> {
 	await ensureRow();
 	await db.update(settings).set(data).where(eq(settings.id, SETTINGS_ID));
-}
-
-export async function updateAdminPasswordHash(hash: string): Promise<void> {
-	await ensureRow();
-	await db.update(settings).set({ adminPasswordHash: hash }).where(eq(settings.id, SETTINGS_ID));
 }
