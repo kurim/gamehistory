@@ -123,7 +123,10 @@ make setup DATA_PATH=/anderer/pfad      # abweichender Pfad
 ```
 
 `make setup` überschreibt eine bereits vorhandene `.env` nicht, baut das Image aber bei jedem
-Aufruf neu (z. B. nach `git pull`). Alternativ manuell:
+Aufruf neu (z. B. nach `git pull`). Der gewählte `PORT` wird per `ss` auf Belegung geprüft (falls
+installiert) — ist er belegt, schlägt das Skript den nächsten freien Port vor. `docker-compose.yml`
+mappt Host- und Container-Port beide über diesen einen `PORT`-Wert aus `.env`, bleibt also
+automatisch konsistent. Alternativ manuell:
 
 ```bash
 cp .env.example .env   # ausfüllen, siehe oben — PORT hier auf 3000 lassen

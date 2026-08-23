@@ -49,6 +49,20 @@ env:
 	origin=$${origin:-https://games.example.com}; \
 	read -p "Port [3000]: " port; \
 	port=$${port:-3000}; \
+	if command -v ss >/dev/null 2>&1; then \
+		port_free() { ! ss -Htln 2>/dev/null | grep -qE ":$$1([[:space:]]|$$)"; }; \
+		if ! port_free "$$port"; then \
+			echo "Port $$port ist bereits belegt."; \
+			alt=$$port; tries=0; \
+			while ! port_free "$$alt" && [ "$$tries" -lt 50 ]; do \
+				alt=$$((alt + 1)); tries=$$((tries + 1)); \
+			done; \
+			read -p "Alternativer freier Port [$$alt]: " chosen; \
+			port=$${chosen:-$$alt}; \
+		fi; \
+	else \
+		echo "Hinweis: 'ss' nicht gefunden — Port-Verfügbarkeit wird nicht geprüft."; \
+	fi; \
 	session_secret=$$(openssl rand -base64 48); \
 	{ \
 		echo "DATABASE_URL=\"file:./data/games.db\""; \
