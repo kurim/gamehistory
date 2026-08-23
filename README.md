@@ -112,15 +112,21 @@ Das Image enthält nur Code, `node_modules` und den Build — `.env` und `data/`
 heruntergeladene Cover) bleiben außerhalb und werden erst beim Start eingebunden. Dadurch lässt
 sich das Image neu bauen/deployen, ohne Config oder Daten anzufassen.
 
-Einmalige Einrichtung (legt `data/` an und fragt `ORIGIN`/`PORT` ab, um `.env` zu erzeugen —
-kein Node/npx auf dem Zielhost nötig, das Admin-Konto legst du danach unter `/setup` im Browser an):
+Einmalige Einrichtung, im Repo-Root ausführen (legt `data/` an, fragt `ORIGIN`/`PORT` ab und
+erzeugt `.env`, baut das Image via `docker compose build` und fragt danach, ob der Container
+direkt gestartet werden soll — kein Node/npx auf dem Zielhost nötig, das Admin-Konto legst du
+danach unter `/setup` im Browser an):
 
 ```bash
 make setup                              # Standardpfad /home/docker/gamehistory
 make setup DATA_PATH=/anderer/pfad      # abweichender Pfad
 ```
 
-`make setup` überschreibt eine bereits vorhandene `.env` nicht. Alternativ manuell:
+`make setup` überschreibt eine bereits vorhandene `.env` nicht, baut das Image aber bei jedem
+Aufruf neu (z. B. nach `git pull`). Der gewählte `PORT` wird per `ss` auf Belegung geprüft (falls
+installiert) — ist er belegt, schlägt das Skript den nächsten freien Port vor. `docker-compose.yml`
+mappt Host- und Container-Port beide über diesen einen `PORT`-Wert aus `.env`, bleibt also
+automatisch konsistent. Alternativ manuell:
 
 ```bash
 cp .env.example .env   # ausfüllen, siehe oben — PORT hier auf 3000 lassen
