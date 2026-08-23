@@ -1,0 +1,126 @@
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import {
+	createGame,
+	deleteGame,
+	listCategories,
+	listGamesNewestFirst
+} from '$lib/server/db/queries';
+import { parseGameFormData, parseGameLookupJson } from '$lib/server/validation';
+import { SESSION_COOKIE } from '$lib/server/auth/session';
+import { CoverUploadError, saveUploadedCover } from '$lib/server/covers';
+import { downloadGridForGame } from '$lib/server/steamgriddb';
+import { updateAdminPasswordHash, updateAppearance } from '$lib/server/db/settings';
+import { verifyAdminCredentials } from '$lib/server/auth/password';
+import { isValidHexColor } from '$lib/theme';
+import { env } from '$env/dynamic/private';
+import argon2 from 'argon2';
+
+export const load: PageServerLoad = async () => {
+	const [games, categories] = await Promise.all([listGamesNewestFirst(), listCategories()]);
+	return { games, categories };
+};
+
+export const actions: Actions = {
+	create: async ({ request }) => {
+		const form = await request.formData();
+		const input = parseGameFormData(form);
+		if ('error' in input) return fail(400, { error: input.error });
+
+		const coverFile = form.get('coverFile');
+		if (coverFile instanceof File && coverFile.size > 0) {
+			try {
+				input.coverUrl = await saveUploadedCover(coverFile);
+				input.gameId = null;
+			} catch (err) {
+				const message =
+					err instanceof CoverUploadError ? err.message : 'Cover-Upload fehlgeschlagen.';
+				return fail(400, { error: message });
+			}
+		}
+
+		await createGame(input);
+		return { success: true };
+	},
+
+	delete: async ({ request }) => {
+		const form = await request.formData();
+		const id = Number(form.get('id'));
+		if (!Number.isInteger(id)) return fail(400, { error: 'Ungültige ID.' });
+
+		await deleteGame(id);
+		return { success: true };
+	},
+
+	importJson: async ({ request }) => {
+		const form = await request.formData();
+		const raw = String(form.get('json') ?? '');
+		const parsed = parseGameLookupJson(raw);
+		if ('error' in parsed) return fail(400, { error: parsed.error });
+
+		let coverFailures = 0;
+		for (const game of parsed) {
+			if (game.gameId && !game.coverUrl) {
+				try {
+					const resolved = await downloadGridForGame(game.gameId);
+					game.coverUrl = resolved.coverUrl;
+					game.coverLicense = resolved.coverLicense;
+				} catch {
+					coverFailures++;
+					game.coverUrl = null;
+					game.coverLicense = null;
+					game.gameId = null;
+				}
+			}
+			await createGame(game);
+		}
+		return { success: true, imported: parsed.length, coverFailures };
+	},
+
+	updateAppearance: async ({ request }) => {
+		const form = await request.formData();
+		const siteTitle = String(form.get('siteTitle') ?? '').trim();
+		const heroHeadline = String(form.get('heroHeadline') ?? '').trim();
+		const accentColor = String(form.get('accentColor') ?? '').trim();
+		const backgroundColor = String(form.get('backgroundColor') ?? '').trim();
+
+		if (!isValidHexColor(accentColor) || !isValidHexColor(backgroundColor)) {
+			return fail(400, { error: 'Farben müssen im Format #rrggbb angegeben werden.' });
+		}
+
+		await updateAppearance({
+			siteTitle: siteTitle || null,
+			heroHeadline: heroHeadline || null,
+			accentColor,
+			backgroundColor
+		});
+		return { success: true, appearanceSaved: true };
+	},
+
+	changePassword: async ({ request }) => {
+		const form = await request.formData();
+		const currentPassword = String(form.get('currentPassword') ?? '');
+		const newPassword = String(form.get('newPassword') ?? '');
+		const confirmPassword = String(form.get('confirmPassword') ?? '');
+
+		if (!env.ADMIN_USER) return fail(500, { error: 'ADMIN_USER ist nicht konfiguriert.' });
+		if (newPassword.length < 8) {
+			return fail(400, { error: 'Neues Passwort muss mindestens 8 Zeichen haben.' });
+		}
+		if (newPassword !== confirmPassword) {
+			return fail(400, { error: 'Passwörter stimmen nicht überein.' });
+		}
+
+		const valid = await verifyAdminCredentials(env.ADMIN_USER, currentPassword);
+		if (!valid) return fail(400, { error: 'Aktuelles Passwort ist falsch.' });
+
+		const hash = await argon2.hash(newPassword);
+		await updateAdminPasswordHash(hash);
+		return { success: true, passwordChanged: true };
+	},
+
+	logout: async ({ cookies }) => {
+		cookies.delete(SESSION_COOKIE, { path: '/' });
+		throw redirect(303, '/login');
+	}
+};

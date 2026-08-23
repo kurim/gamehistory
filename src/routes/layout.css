@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@theme {
+	--color-accent-100: var(--accent-100, #ede9fe);
+	--color-accent-200: var(--accent-200, #ddd6fe);
+	--color-accent-300: var(--accent-300, #c4b5fd);
+	--color-accent-400: var(--accent-400, #a78bfa);
+	--color-accent-500: var(--accent-500, #8b5cf6);
+	--color-accent-600: var(--accent-600, #7c3aed);
+	--color-canvas: var(--canvas, #08060f);
+}
