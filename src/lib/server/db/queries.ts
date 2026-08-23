@@ -29,6 +29,11 @@ export async function deleteGame(id: number) {
 	await db.delete(games).where(eq(games.id, id));
 }
 
+/** Lightweight fetch for duplicate-detection during import — avoids pulling full rows. */
+export async function listNameYearPairs() {
+	return db.select({ name: games.name, year: games.year }).from(games);
+}
+
 export async function listCategories() {
 	const rows = await db.selectDistinct({ category: games.category }).from(games);
 	return rows.map((r) => r.category).sort((a, b) => a.localeCompare(b));

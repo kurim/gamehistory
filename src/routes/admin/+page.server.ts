@@ -4,7 +4,8 @@ import {
 	createGame,
 	deleteGame,
 	listCategories,
-	listGamesNewestFirst
+	listGamesNewestFirst,
+	listNameYearPairs
 } from '$lib/server/db/queries';
 import { parseGameFormData, parseGameLookupJson } from '$lib/server/validation';
 import { SESSION_COOKIE } from '$lib/server/auth/session';
@@ -57,8 +58,20 @@ export const actions: Actions = {
 		const parsed = parseGameLookupJson(raw);
 		if ('error' in parsed) return fail(400, { error: parsed.error });
 
+		const dedupeKey = (name: string, year: number) => `${name.trim().toLowerCase()}::${year}`;
+		const existing = new Set((await listNameYearPairs()).map((g) => dedupeKey(g.name, g.year)));
+
+		let imported = 0;
+		let duplicates = 0;
 		let coverFailures = 0;
 		for (const game of parsed.games) {
+			const key = dedupeKey(game.name, game.year);
+			if (existing.has(key)) {
+				duplicates++;
+				continue;
+			}
+			existing.add(key); // guards against duplicates within the same JSON batch too
+
 			if (game.gameId && !game.coverUrl) {
 				try {
 					const resolved = await downloadGridForGame(game.gameId);
@@ -72,11 +85,13 @@ export const actions: Actions = {
 				}
 			}
 			await createGame(game);
+			imported++;
 		}
 		return {
 			success: true,
-			imported: parsed.games.length,
+			imported,
 			skipped: parsed.skipped,
+			duplicates,
 			coverFailures
 		};
 	},
