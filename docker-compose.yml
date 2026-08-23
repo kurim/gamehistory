@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: gamehistory:latest
     restart: unless-stopped
     ports:
       - '${PORT:-3000}:${PORT:-3000}'

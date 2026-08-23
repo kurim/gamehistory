@@ -123,47 +123,66 @@ Das Image enthält nur Code, `node_modules` und den Build — `.env` und `data/`
 heruntergeladene Cover) bleiben außerhalb und werden erst beim Start eingebunden. Dadurch lässt
 sich das Image neu bauen/deployen, ohne Config oder Daten anzufassen.
 
-Einmalige Einrichtung, im Repo-Root ausführen (legt `data/` an, fragt `ORIGIN`/`PORT` ab und
-erzeugt `.env`, baut das Image via `docker compose build` und fragt danach, ob der Container
-direkt gestartet werden soll — kein Node/npx auf dem Zielhost nötig, das Admin-Konto legst du
-danach unter `/setup` im Browser an):
+`make setup` (im Repo-Root ausführen — dort liegen Makefile, Dockerfile und `docker-compose.yml`
+nebeneinander) baut das Image und richtet an einem frei wählbaren Pfad ein **eigenständiges
+Deploy-Verzeichnis** ein — dieser Pfad kann bewusst vom Repo-Checkout abweichen (z. B. Code unter
+`/opt/gamehistory`, Deploy-Daten unter `/home/docker/gamehistory`):
 
 ```bash
-make setup                              # Standardpfad /home/docker/gamehistory
-make setup DATA_PATH=/anderer/pfad      # abweichender Pfad
+make setup                              # fragt nach dem Pfad, Vorschlag /home/docker/gamehistory
+make setup DATA_PATH=/anderer/pfad      # abweichender Vorschlag für die Nachfrage
 ```
 
-`make setup` überschreibt eine bereits vorhandene `.env` nicht, baut das Image aber bei jedem
-Aufruf neu (z. B. nach `git pull`). Der gewählte `PORT` wird per `ss` auf Belegung geprüft (falls
-installiert) — ist er belegt, schlägt das Skript den nächsten freien Port vor. `docker-compose.yml`
-mappt Host- und Container-Port beide über diesen einen `PORT`-Wert aus `.env`, bleibt also
-automatisch konsistent. Alternativ manuell:
+Fragt der Reihe nach: Deploy-Pfad, `ORIGIN`, `PORT` (per `ss` auf Belegung geprüft, falls
+installiert — ist er belegt, wird der nächste freie Port vorgeschlagen). Legt dort an:
+
+- `data/` — SQLite-DB + heruntergeladene Cover
+- `.env` — generiert, mit zufälligem `SESSION_SECRET`; Admin-Konto legst du danach unter `/setup`
+  im Browser an, kein Node/npx auf dem Zielhost nötig
+- `docker-compose.yml` — eine Kopie der Repo-Version, referenziert nur das fertig gebaute Image
+  (`gamehistory:latest`), braucht also keinen Build-Kontext
+
+Baut anschließend das Image (`docker compose build`, im Repo-Root) und fragt, ob der Container
+direkt gestartet werden soll. Vorhandene `.env`/`docker-compose.yml` im Deploy-Verzeichnis werden
+nie überschrieben — mehrfaches `make setup` ist safe.
+
+**Wichtig:** Da das Deploy-Verzeichnis seine eigene `docker-compose.yml` (+ `.env` + `data/`) hat,
+laufen alle weiteren `docker compose`-Befehle dort, nicht im Repo:
 
 ```bash
-cp .env.example .env   # ausfüllen, siehe oben — PORT hier auf 3000 lassen
-mkdir -p data
-docker compose up -d --build
+cd /home/docker/gamehistory   # oder dein gewählter Pfad
+docker compose restart
+docker compose logs -f
+docker compose down
 ```
 
-- `.env` wird über `env_file` als Umgebungsvariablen in den Container injiziert (nicht als Datei
-  gemountet) — die Werte müssen daher schon beim `docker compose up` vorliegen.
-- `./data` wird nach `/app/data` gemountet (SQLite-Datei + `data/covers/`).
-- Port-Mapping ist `3000:3000` (`docker-compose.yml` anpassen, falls dein Reverse-Proxy einen
-  anderen Host-Port erwartet).
+Kein `--project-directory` oder sonstige Sonderflags nötig — ganz normale Compose-Befehle, weil
+`.env`/`data/`/`docker-compose.yml` dort als Geschwisterdateien liegen.
+
+Neu deployen nach Code-Änderungen: `make setup` erneut ausführen (baut das Image neu, überschreibt
+aber Config/Daten im Deploy-Verzeichnis nicht), danach im Deploy-Verzeichnis `docker compose up -d`
+um den Container mit dem neuen Image neu zu starten.
+
+Alternativ manuell, ohne `make setup`:
+
+```bash
+cp .env.example /pfad/zum/deploy/.env   # ausfüllen, siehe oben
+cp docker-compose.yml /pfad/zum/deploy/
+mkdir -p /pfad/zum/deploy/data
+docker compose build                     # im Repo-Root
+cd /pfad/zum/deploy && docker compose up -d
+```
 
 Ohne Compose, mit reinem `docker run`:
 
 ```bash
 docker build -t gamehistory .
 docker run -d --name gamehistory \
-  --env-file .env \
-  -v "$(pwd)/data:/app/data" \
+  --env-file /pfad/zum/deploy/.env \
+  -v "/pfad/zum/deploy/data:/app/data" \
   -p 3000:3000 \
   gamehistory
 ```
-
-Neu deployen nach Code-Änderungen: `docker compose up -d --build` — Daten und Config bleiben
-unangetastet, da sie nicht Teil des Images sind.
 
 ## Sonstiges
 

@@ -1,21 +1,22 @@
-# Initiale Einrichtung fürs Docker-Deploy — legt data/ und .env außerhalb des
-# Images an (siehe docker-compose.yml), baut das Image und fragt, ob der
-# Container direkt gestartet werden soll. Läuft idempotent: vorhandene .env
-# wird nie überschrieben. Der Admin-Zugang selbst wird NICHT hier angelegt,
-# sondern beim ersten Öffnen der App unter /setup — braucht daher kein Node
-# auf dem Zielhost.
+# Initiale Einrichtung fürs Docker-Deploy. Baut das Image aus diesem Repo und
+# richtet unter DATA_PATH ein eigenständiges Deploy-Verzeichnis ein — .env,
+# data/ UND eine eigene Kopie von docker-compose.yml (referenziert nur das
+# fertig gebaute Image, kein Build-Kontext nötig). Dadurch braucht KEIN
+# späterer `docker compose`-Befehl (restart, logs, down, …) Sonderflags wie
+# --project-directory — einfach `cd $(DATA_PATH) && docker compose ...`.
+# Läuft idempotent: vorhandene .env/docker-compose.yml dort werden nie
+# überschrieben. Der Admin-Zugang selbst wird NICHT hier angelegt, sondern
+# beim ersten Öffnen der App unter /setup — braucht daher kein Node auf dem
+# Zielhost.
 #
 # Im Repo-Root ausführen (dort liegen Makefile, Dockerfile und
-# docker-compose.yml nebeneinander). `make setup` fragt interaktiv nach dem
-# Datenpfad (Vorschlag per DATA_PATH überschreibbar); .env und data/ landen
-# dort, auch wenn das vom Repo-Verzeichnis abweicht.
+# docker-compose.yml nebeneinander).
 #
 # Nutzung:
 #   make setup                                  # fragt nach dem Pfad, Vorschlag /home/docker/gamehistory
 #   make setup DATA_PATH=/anderer/pfad           # abweichender Vorschlag für die Nachfrage
 
 DATA_PATH ?= /home/docker/gamehistory
-COMPOSE   := docker compose -f "$(CURDIR)/docker-compose.yml"
 
 .DEFAULT_GOAL := help
 
@@ -23,21 +24,32 @@ COMPOSE   := docker compose -f "$(CURDIR)/docker-compose.yml"
 
 help:
 	@echo "Verfügbare Ziele:"
-	@echo "  make setup   - fragt Datenpfad, ORIGIN, PORT ab, erzeugt data/ + .env,"
-	@echo "                 baut das Image und fragt, ob der Container gestartet werden soll"
+	@echo "  make setup   - fragt Deploy-Pfad, ORIGIN, PORT ab, richtet dort .env + data/ +"
+	@echo "                 docker-compose.yml ein, baut das Image und fragt, ob der"
+	@echo "                 Container gestartet werden soll"
 	@echo ""
 	@echo "Admin-Zugang wird NICHT hier angelegt — das passiert beim ersten"
 	@echo "Öffnen der App unter /setup."
 	@echo ""
+	@echo "Nach dem Setup laufen alle docker-compose-Befehle im Deploy-Verzeichnis,"
+	@echo "nicht im Repo: cd <deploy-pfad> && docker compose restart / logs / down / ..."
+	@echo ""
 	@echo "Pfad-Vorschlag überschreiben: make setup DATA_PATH=/anderer/pfad"
 
 setup:
-	@read -p "Verzeichnis für .env und data/ [$(DATA_PATH)]: " data_path; \
+	@read -p "Deploy-Verzeichnis für .env, data/ und docker-compose.yml [$(DATA_PATH)]: " data_path; \
 	data_path=$${data_path:-$(DATA_PATH)}; \
 	data_dir="$$data_path/data"; \
 	env_file="$$data_path/.env"; \
+	compose_file="$$data_path/docker-compose.yml"; \
 	mkdir -p "$$data_dir"; \
 	echo "Datenverzeichnis angelegt: $$data_dir"; \
+	if [ -f "$$compose_file" ]; then \
+		echo "docker-compose.yml existiert bereits unter $$compose_file — wird nicht überschrieben."; \
+	else \
+		cp "$(CURDIR)/docker-compose.yml" "$$compose_file"; \
+		echo "docker-compose.yml kopiert nach $$compose_file"; \
+	fi; \
 	if [ -f "$$env_file" ]; then \
 		echo ".env existiert bereits unter $$env_file — wird nicht überschrieben."; \
 	else \
@@ -71,9 +83,9 @@ setup:
 		echo ".env erstellt unter $$env_file"; \
 		echo "Admin-Konto beim ersten App-Aufruf unter $$origin/setup anlegen."; \
 	fi; \
-	$(COMPOSE) --project-directory "$$data_path" build; \
+	docker compose -f "$(CURDIR)/docker-compose.yml" build; \
 	read -p "Docker-Container jetzt starten (docker compose up -d)? [y/N] " start_now; \
 	case "$$start_now" in \
-		[yY]*) $(COMPOSE) --project-directory "$$data_path" up -d ;; \
-		*) echo "Übersprungen. Später starten mit: $(COMPOSE) --project-directory \"$$data_path\" up -d" ;; \
+		[yY]*) (cd "$$data_path" && docker compose up -d) ;; \
+		*) echo "Übersprungen. Später starten mit: cd $$data_path && docker compose up -d" ;; \
 	esac
