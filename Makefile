@@ -10,6 +10,11 @@ DATA_PATH ?= /home/docker/gamehistory
 DATA_DIR  := $(DATA_PATH)/data
 ENV_FILE  := $(DATA_PATH)/.env
 
+# `read -s` (silent password input) is a bash-ism — POSIX /bin/sh (e.g. dash
+# on Debian/Ubuntu) rejects it with "Illegal option -s". Force bash so the
+# recipe below works regardless of the system's default shell.
+SHELL := /bin/bash
+
 .DEFAULT_GOAL := help
 
 .PHONY: help setup data-dir env
