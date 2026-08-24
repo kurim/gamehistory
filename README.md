@@ -119,38 +119,34 @@ Formulare korrekt greift.
 
 ### Deploy mit Docker (empfohlen)
 
-Das Image enthält nur Code, `node_modules` und den Build — `.env` und `data/` (SQLite-DB +
-heruntergeladene Cover) bleiben außerhalb und werden erst beim Start eingebunden. Dadurch lässt
-sich das Image neu bauen/deployen, ohne Config oder Daten anzufassen.
+Das Image wird nicht mehr lokal gebaut, sondern von GitHub Actions bei jedem Push auf `main`
+gebaut und nach GitHub Container Registry (GHCR) gepusht (`.github/workflows/docker-build.yml`,
+Image: `ghcr.io/kurim/gamehistory:latest`). Der Deploy-Host zieht nur noch das fertige Image —
+kein Node, kein Build-Toolchain, kein Repo-Checkout auf dem Zielhost nötig. Das GHCR-Package muss
+dafür auf **public** stehen (Package-Einstellungen auf GitHub), sonst braucht der Deploy-Host
+zusätzlich `docker login ghcr.io` mit einem PAT (`read:packages`).
 
-`make setup` (im Repo-Root ausführen — dort liegen Makefile, Dockerfile und `docker-compose.yml`
-nebeneinander) baut das Image und richtet an einem frei wählbaren Pfad ein **eigenständiges
-Deploy-Verzeichnis** ein — dieser Pfad kann bewusst vom Repo-Checkout abweichen (z. B. Code unter
-`/opt/gamehistory`, Deploy-Daten unter `/home/docker/gamehistory`):
+`.env` und `data/` (SQLite-DB + heruntergeladene Cover) bleiben außerhalb des Images und werden
+erst beim Start eingebunden — Updates rühren Config/Daten nie an.
+
+Einrichtung an einem frei wählbaren Deploy-Pfad, der bewusst vom Repo-Checkout abweichen kann
+(z. B. Code unter `/opt/gamehistory`, Deploy-Daten unter `/home/docker/gamehistory`):
 
 ```bash
-make setup                              # fragt nach dem Pfad, Vorschlag /home/docker/gamehistory
-make setup DATA_PATH=/anderer/pfad      # abweichender Vorschlag für die Nachfrage
+mkdir -p /pfad/zum/deploy/data
+cp .env.example /pfad/zum/deploy/.env   # ausfüllen: DATABASE_URL, SESSION_SECRET, ORIGIN, PORT
+cp docker-compose.yml /pfad/zum/deploy/
+cd /pfad/zum/deploy && docker compose pull && docker compose up -d
 ```
 
-Fragt der Reihe nach: Deploy-Pfad, `ORIGIN`, `PORT` (per `ss` auf Belegung geprüft, falls
-installiert — ist er belegt, wird der nächste freie Port vorgeschlagen). Legt dort an:
+`SESSION_SECRET` z. B. mit `openssl rand -base64 48` erzeugen. Admin-Konto danach unter `/setup`
+im Browser anlegen — kein Node/npx auf dem Zielhost nötig.
 
-- `data/` — SQLite-DB + heruntergeladene Cover
-- `.env` — generiert, mit zufälligem `SESSION_SECRET`; Admin-Konto legst du danach unter `/setup`
-  im Browser an, kein Node/npx auf dem Zielhost nötig
-- `docker-compose.yml` — eine Kopie der Repo-Version, referenziert nur das fertig gebaute Image
-  (`gamehistory:latest`), braucht also keinen Build-Kontext
-
-Baut anschließend das Image (`docker compose build`, im Repo-Root) und fragt, ob der Container
-direkt gestartet werden soll. Vorhandene `.env`/`docker-compose.yml` im Deploy-Verzeichnis werden
-nie überschrieben — mehrfaches `make setup` ist safe.
-
-**Wichtig:** Da das Deploy-Verzeichnis seine eigene `docker-compose.yml` (+ `.env` + `data/`) hat,
-laufen alle weiteren `docker compose`-Befehle dort, nicht im Repo:
+Da das Deploy-Verzeichnis seine eigene `docker-compose.yml` (+ `.env` + `data/`) hat, laufen alle
+weiteren `docker compose`-Befehle dort, nicht im Repo:
 
 ```bash
-cd /home/docker/gamehistory   # oder dein gewählter Pfad
+cd /pfad/zum/deploy
 docker compose restart
 docker compose logs -f
 docker compose down
@@ -159,30 +155,24 @@ docker compose down
 Kein `--project-directory` oder sonstige Sonderflags nötig — ganz normale Compose-Befehle, weil
 `.env`/`data/`/`docker-compose.yml` dort als Geschwisterdateien liegen.
 
-Neu deployen nach Code-Änderungen: `make setup` erneut ausführen (baut das Image neu, überschreibt
-aber Config/Daten im Deploy-Verzeichnis nicht), danach im Deploy-Verzeichnis `docker compose up -d`
-um den Container mit dem neuen Image neu zu starten.
-
-Alternativ manuell, ohne `make setup`:
+Neu deployen nach Code-Änderungen (Push auf `main` löst den GHCR-Build automatisch aus):
 
 ```bash
-cp .env.example /pfad/zum/deploy/.env   # ausfüllen, siehe oben
-cp docker-compose.yml /pfad/zum/deploy/
-mkdir -p /pfad/zum/deploy/data
-docker compose build                     # im Repo-Root
-cd /pfad/zum/deploy && docker compose up -d
+cd /pfad/zum/deploy && docker compose pull && docker compose up -d
 ```
 
 Ohne Compose, mit reinem `docker run`:
 
 ```bash
-docker build -t gamehistory .
+docker pull ghcr.io/kurim/gamehistory:latest
 docker run -d --name gamehistory \
   --env-file /pfad/zum/deploy/.env \
   -v "/pfad/zum/deploy/data:/app/data" \
   -p 3000:3000 \
-  gamehistory
+  ghcr.io/kurim/gamehistory:latest
 ```
+
+Lokal bauen (z. B. zum Testen des Dockerfiles) geht weiterhin mit `docker build -t gamehistory .`.
 
 ## Sonstiges
 
