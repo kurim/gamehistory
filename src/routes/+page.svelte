@@ -178,7 +178,7 @@
 		>
 			Admin
 		</a>
-		<p class="mt-2 text-xs text-[#6b6678]/60">v{data.appVersion}</p>
+		<p class="mt-2 text-xs text-[#6b6678]/60">{data.appVersion}</p>
 	</footer>
 </div>
 

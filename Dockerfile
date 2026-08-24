@@ -28,11 +28,13 @@ FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Git commit sha baked in at build time (see .github/workflows/docker-build.yml),
-# shown in the UI so you can tell which build is currently deployed and notice
-# when it changes after a redeploy. Falls back to "dev" for local builds.
-ARG GIT_SHA=dev
-ENV APP_VERSION=$GIT_SHA
+# Version string baked in at build time (see .github/workflows/docker-build.yml,
+# derived via `git describe` — a release tag like "v1.2.3" when built from one,
+# otherwise "v1.2.3-N-gSHA" or a bare commit sha). Shown in the UI so you can
+# tell which build is currently deployed and notice when it changes after a
+# redeploy. Falls back to "dev" for local builds.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules

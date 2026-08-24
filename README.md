@@ -174,6 +174,25 @@ docker run -d --name gamehistory \
 
 Lokal bauen (z. B. zum Testen des Dockerfiles) geht weiterhin mit `docker build -t gamehistory .`.
 
+### Releases (Version-Tags)
+
+Jeder Push auf `main` baut und pusht `ghcr.io/kurim/gamehistory:latest` — die im UI angezeigte
+Version (Footer der Startseite, Admin-Bereich) ist dabei per `git describe` abgeleitet, z. B.
+`v0.1.0-3-g596865f` (3 Commits nach dem letzten Tag `v0.1.0`) oder, falls noch kein Tag existiert,
+einfach der kurze Commit-SHA.
+
+Für einen benannten Release-Stand reicht ein Git-Tag:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Das löst denselben Workflow aus und veröffentlicht zusätzlich ein eigenes, unveränderliches Image
+`ghcr.io/kurim/gamehistory:v0.2.0` (neben `latest` und dem SHA-Tag) — im laufenden Container zeigt
+sich das dann exakt als `v0.2.0` statt der `-N-gSHA`-Variante. `latest` selbst wird von Tags nicht
+angefasst, das folgt weiterhin nur `main`.
+
 ## Sonstiges
 
 - `npm run check` — Typprüfung (Svelte + TypeScript, strict mode)

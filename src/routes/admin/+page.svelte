@@ -87,7 +87,7 @@
 		<div class="mb-6 flex items-center justify-between">
 			<h1 class="flex items-baseline gap-2 text-2xl font-bold">
 				Admin
-				<span class="text-xs font-normal text-[#6b6678]">v{data.appVersion}</span>
+				<span class="text-xs font-normal text-[#6b6678]">{data.appVersion}</span>
 			</h1>
 			<div class="flex items-center gap-3">
 				<a href={resolve('/')} class="text-sm text-[#9c97ad] hover:text-accent-300"
