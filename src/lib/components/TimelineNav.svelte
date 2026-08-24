@@ -67,36 +67,38 @@
 				d.decade
 					? 'bg-accent-500/20 text-accent-200'
 					: 'text-[#9c97ad] hover:bg-white/5 hover:text-[#f4f2fa]'}"
-				onclick={() =>
-					d.expandable
-						? (openDecade = openDecade === d.decade ? null : d.decade)
-						: scrollToDecade(d.decade)}
+				onclick={() => scrollToDecade(d.decade)}
 			>
 				{d.label}
 				<span class="ml-1 text-xs text-[#6b6678]">{d.count}</span>
 			</button>
 
 			{#if d.expandable && openDecade === d.decade}
-				<div
-					class="absolute top-full left-1/2 z-40 mt-2 max-h-64 w-40 -translate-x-1/2 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#12101d] p-1.5 shadow-2xl"
-				>
-					<button
-						type="button"
-						class="mb-1 w-full cursor-pointer rounded-lg px-3 py-1.5 text-left text-xs text-[#9c97ad] hover:bg-white/5 hover:text-[#f4f2fa]"
-						onclick={() => scrollToDecade(d.decade)}
+				<!-- Wrapper touches the button with zero gap (padding, not margin) so the
+					 hoverable area is continuous and the dropdown doesn't vanish while
+					 moving the mouse down into it. -->
+				<div class="absolute top-full left-1/2 z-40 w-40 -translate-x-1/2 pt-2">
+					<div
+						class="max-h-64 overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#12101d] p-1.5 shadow-2xl"
 					>
-						Ganzes Jahrzehnt
-					</button>
-					{#each d.years as y (y.year)}
 						<button
 							type="button"
-							class="w-full cursor-pointer rounded-lg px-3 py-1.5 text-left text-sm text-[#f4f2fa] hover:bg-accent-500/15"
-							onclick={() => scrollToYear(y.year)}
+							class="mb-1 w-full cursor-pointer rounded-lg px-3 py-1.5 text-left text-xs text-[#9c97ad] hover:bg-white/5 hover:text-[#f4f2fa]"
+							onclick={() => scrollToDecade(d.decade)}
 						>
-							{y.year}
-							<span class="ml-1 text-xs text-[#6b6678]">{y.count}</span>
+							Ganzes Jahrzehnt
 						</button>
-					{/each}
+						{#each d.years as y (y.year)}
+							<button
+								type="button"
+								class="w-full cursor-pointer rounded-lg px-3 py-1.5 text-left text-sm text-[#f4f2fa] hover:bg-accent-500/15"
+								onclick={() => scrollToYear(y.year)}
+							>
+								{y.year}
+								<span class="ml-1 text-xs text-[#6b6678]">{y.count}</span>
+							</button>
+						{/each}
+					</div>
 				</div>
 			{/if}
 		</div>

@@ -9,11 +9,12 @@
 
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	let filterCategory = $state('');
+	let searchQuery = $state('');
 	let sortedGames = $derived(
-		(filterCategory === ''
-			? data.games
-			: data.games.filter((g) => g.category === filterCategory)
-		).sort((a, b) => (sortDir === 'asc' ? a.year - b.year : b.year - a.year))
+		data.games
+			.filter((g) => filterCategory === '' || g.category === filterCategory)
+			.filter((g) => g.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+			.sort((a, b) => (sortDir === 'asc' ? a.year - b.year : b.year - a.year))
 	);
 
 	type Tab = 'import' | 'add' | 'list' | 'settings';
@@ -358,9 +359,17 @@
 					class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] p-4"
 				>
 					<h2 class="text-lg font-semibold">
-						Alle Spiele ({sortedGames.length}{filterCategory ? ` von ${data.games.length}` : ''})
+						Alle Spiele ({sortedGames.length}{filterCategory || searchQuery.trim()
+							? ` von ${data.games.length}`
+							: ''})
 					</h2>
-					<div class="flex items-center gap-3">
+					<div class="flex flex-wrap items-center gap-3">
+						<input
+							type="search"
+							bind:value={searchQuery}
+							placeholder="Suchen…"
+							class="rounded-lg border border-white/[0.08] bg-canvas px-3 py-1.5 text-sm text-[#f4f2fa] outline-none focus:border-accent-400/50"
+						/>
 						<select
 							bind:value={filterCategory}
 							class="cursor-pointer rounded-lg border border-white/[0.08] bg-canvas px-3 py-1.5 text-sm text-[#f4f2fa] outline-none focus:border-accent-400/50"
@@ -418,9 +427,13 @@
 							{:else}
 								<tr>
 									<td colspan="4" class="px-4 py-8 text-center text-[#6b6678]">
-										{filterCategory
-											? 'Keine Spiele in dieser Kategorie.'
-											: 'Noch keine Spiele erfasst.'}
+										{#if data.games.length === 0}
+											Noch keine Spiele erfasst.
+										{:else if searchQuery.trim()}
+											Keine Spiele gefunden für „{searchQuery.trim()}“.
+										{:else}
+											Keine Spiele in dieser Kategorie.
+										{/if}
 									</td>
 								</tr>
 							{/each}

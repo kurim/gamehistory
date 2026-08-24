@@ -7,20 +7,27 @@
 	let { data } = $props();
 
 	let selectedCategory = $state<string | null>(null);
+	let searchQuery = $state('');
 
 	function toggleCategory(category: string) {
 		selectedCategory = selectedCategory === category ? null : category;
 	}
 
+	let normalizedQuery = $derived(searchQuery.trim().toLowerCase());
+
 	let filteredDecades = $derived(
-		selectedCategory === null
+		selectedCategory === null && normalizedQuery === ''
 			? data.decades
 			: data.decades
 					.map((d) => {
 						const years = d.years
 							.map((y) => ({
 								...y,
-								games: y.games.filter((g) => g.category === selectedCategory)
+								games: y.games.filter(
+									(g) =>
+										(selectedCategory === null || g.category === selectedCategory) &&
+										(normalizedQuery === '' || g.name.toLowerCase().includes(normalizedQuery))
+								)
 							}))
 							.filter((y) => y.games.length > 0);
 						const count = years.reduce((sum, y) => sum + y.games.length, 0);
@@ -42,6 +49,29 @@
 				>{data.settings.heroHeadline}</span
 			>
 		</h1>
+
+		<div class="mx-auto mt-8 max-w-sm">
+			<label class="relative block">
+				<span class="sr-only">Spiele durchsuchen</span>
+				<svg
+					class="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[#6b6678]"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<circle cx="11" cy="11" r="7" />
+					<path stroke-linecap="round" d="m20 20-3.5-3.5" />
+				</svg>
+				<input
+					type="search"
+					bind:value={searchQuery}
+					placeholder="Spiele durchsuchen…"
+					class="w-full rounded-full border border-white/[0.08] bg-[#12101d]/70 py-2 pr-4 pl-9 text-sm text-[#f4f2fa] backdrop-blur-md transition-colors placeholder:text-[#6b6678] focus:border-accent-400/40 focus:outline-none"
+				/>
+			</label>
+		</div>
 
 		{#if data.categoryStats.length > 0}
 			<div class="mx-auto mt-8 flex max-w-3xl flex-wrap items-center justify-center gap-2">
@@ -105,11 +135,13 @@
 
 		{#if filteredDecades.length === 0}
 			<p class="mx-auto max-w-md px-6 py-24 text-center text-[#9c97ad]">
-				Keine Spiele in dieser Kategorie.
+				{normalizedQuery !== ''
+					? `Keine Spiele gefunden für „${searchQuery.trim()}“.`
+					: 'Keine Spiele in dieser Kategorie.'}
 			</p>
 		{:else}
 			<!-- Timeline body -->
-			<main class="mx-auto max-w-5xl px-6 py-12">
+			<main class="mx-auto max-w-[96rem] px-6 py-12">
 				{#each filteredDecades as d (d.decade)}
 					<section
 						id="decade-{d.decade}"
@@ -126,7 +158,7 @@
 								<h3 class="mb-3 text-sm font-semibold tracking-wide text-accent-300/80 uppercase">
 									{y.year}
 								</h3>
-								<div class="grid gap-3 sm:grid-cols-2">
+								<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 									{#each y.games as game (game.id)}
 										<GameCard {game} />
 									{/each}
