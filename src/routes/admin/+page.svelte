@@ -270,7 +270,7 @@
 													type="button"
 													onclick={() => (game.selectedIndex = candidateIndex)}
 													title={candidate.author ? `von ${candidate.author}` : undefined}
-													class="h-14 w-11 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors {game.selectedIndex ===
+													class="h-15 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors {game.selectedIndex ===
 													candidateIndex
 														? 'border-accent-400'
 														: 'border-white/[0.08] hover:border-accent-400/40'}"

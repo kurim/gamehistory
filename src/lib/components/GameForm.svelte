@@ -246,7 +246,7 @@
 								disabled={sgdbSelecting}
 								onclick={() => selectCandidate(candidate)}
 								title={candidate.author ? `von ${candidate.author}` : undefined}
-								class="h-16 w-13 shrink-0 cursor-pointer overflow-hidden rounded-md border border-white/[0.08] transition-colors hover:border-accent-400/50 disabled:opacity-50"
+								class="h-15 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-white/[0.08] transition-colors hover:border-accent-400/50 disabled:opacity-50"
 							>
 								<img src={candidate.url} alt="Cover-Vorschlag" class="h-full w-full object-cover" />
 							</button>
