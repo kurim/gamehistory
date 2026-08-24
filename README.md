@@ -188,10 +188,15 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-Das löst denselben Workflow aus und veröffentlicht zusätzlich ein eigenes, unveränderliches Image
-`ghcr.io/kurim/gamehistory:v0.2.0` (neben `latest` und dem SHA-Tag) — im laufenden Container zeigt
-sich das dann exakt als `v0.2.0` statt der `-N-gSHA`-Variante. `latest` selbst wird von Tags nicht
-angefasst, das folgt weiterhin nur `main`.
+Das löst denselben Workflow aus und veröffentlicht zusätzlich zwei weitere Image-Tags:
+
+- `ghcr.io/kurim/gamehistory:v0.2.0` — unveränderlich, bleibt für immer genau dieser Release-Stand
+- `ghcr.io/kurim/gamehistory:stable` — beweglich, zeigt immer auf den zuletzt getaggten Release
+
+Im laufenden Container zeigt sich das dann exakt als `v0.2.0` statt der `-N-gSHA`-Variante.
+`latest` selbst wird von Tags nicht angefasst, das folgt weiterhin nur `main` (Bleeding Edge).
+Für den Produktivbetrieb empfiehlt sich `stable` statt `latest` in der `docker-compose.yml` — dann
+gibt es nur nach einem bewussten Release-Tag ein neues Image, nicht bei jedem Push auf `main`.
 
 ## Sonstiges
 
