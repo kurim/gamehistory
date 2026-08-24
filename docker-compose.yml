@@ -1,7 +1,6 @@
 services:
   app:
-    build: .
-    image: gamehistory:latest
+    image: ghcr.io/kurim/gamehistory:latest
     restart: unless-stopped
     ports:
       - '${PORT:-3000}:${PORT:-3000}'

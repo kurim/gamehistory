@@ -1,8 +1,10 @@
-# Initiale Einrichtung fürs Docker-Deploy. Baut das Image aus diesem Repo und
-# richtet unter DATA_PATH ein eigenständiges Deploy-Verzeichnis ein — .env,
-# data/ UND eine eigene Kopie von docker-compose.yml (referenziert nur das
-# fertig gebaute Image, kein Build-Kontext nötig). Dadurch braucht KEIN
-# späterer `docker compose`-Befehl (restart, logs, down, …) Sonderflags wie
+# Initiale Einrichtung fürs Docker-Deploy. Richtet unter DATA_PATH ein
+# eigenständiges Deploy-Verzeichnis ein — .env, data/ UND eine eigene Kopie
+# von docker-compose.yml (referenziert das fertig gebaute Image von GHCR,
+# ghcr.io/kurim/gamehistory, kein lokaler Build-Kontext nötig — GitHub
+# Actions baut und published das Image bei jedem Push auf main, siehe
+# .github/workflows/docker-build.yml). Dadurch braucht KEIN späterer
+# `docker compose`-Befehl (restart, logs, down, …) Sonderflags wie
 # --project-directory — einfach `cd $(DATA_PATH) && docker compose ...`.
 # Läuft idempotent: vorhandene .env/docker-compose.yml dort werden nie
 # überschrieben. Der Admin-Zugang selbst wird NICHT hier angelegt, sondern
@@ -15,18 +17,21 @@
 # Nutzung:
 #   make setup                                  # fragt nach dem Pfad, Vorschlag /home/docker/gamehistory
 #   make setup DATA_PATH=/anderer/pfad           # abweichender Vorschlag für die Nachfrage
+#   make update DATA_PATH=/deploy/pfad           # neuestes Image pullen und Container neu starten
 
 DATA_PATH ?= /home/docker/gamehistory
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup
+.PHONY: help setup update
 
 help:
 	@echo "Verfügbare Ziele:"
 	@echo "  make setup   - fragt Deploy-Pfad, ORIGIN, PORT ab, richtet dort .env + data/ +"
-	@echo "                 docker-compose.yml ein, baut das Image und fragt, ob der"
-	@echo "                 Container gestartet werden soll"
+	@echo "                 docker-compose.yml ein, pullt das Image von GHCR und fragt, ob"
+	@echo "                 der Container gestartet werden soll"
+	@echo "  make update  - pullt das neueste Image und startet den Container im"
+	@echo "                 Deploy-Verzeichnis (DATA_PATH) neu"
 	@echo ""
 	@echo "Admin-Zugang wird NICHT hier angelegt — das passiert beim ersten"
 	@echo "Öffnen der App unter /setup."
@@ -83,9 +88,17 @@ setup:
 		echo ".env erstellt unter $$env_file"; \
 		echo "Admin-Konto beim ersten App-Aufruf unter $$origin/setup anlegen."; \
 	fi; \
-	docker compose -f "$(CURDIR)/docker-compose.yml" build; \
+	(cd "$$data_path" && docker compose pull); \
 	read -p "Docker-Container jetzt starten (docker compose up -d)? [y/N] " start_now; \
 	case "$$start_now" in \
 		[yY]*) (cd "$$data_path" && docker compose up -d) ;; \
 		*) echo "Übersprungen. Später starten mit: cd $$data_path && docker compose up -d" ;; \
 	esac
+
+update:
+	@if [ ! -f "$(DATA_PATH)/docker-compose.yml" ]; then \
+		echo "Kein Deploy-Verzeichnis unter $(DATA_PATH) gefunden — erst 'make setup' ausführen."; \
+		exit 1; \
+	fi; \
+	(cd "$(DATA_PATH)" && docker compose pull && docker compose up -d); \
+	echo "Container läuft jetzt mit dem neuesten Image."
