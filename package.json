@@ -48,6 +48,12 @@
 		"better-sqlite3": "^13.0.2",
 		"jose": "^6.2.10"
 	},
+	"overrides": {
+		"cookie": "^0.7.2",
+		"@esbuild-kit/core-utils": {
+			"esbuild": "^0.25.0"
+		}
+	},
 	"allowScripts": {
 		"esbuild@0.18.20": true,
 		"esbuild@0.25.12": true,
