@@ -16,6 +16,13 @@ type SteamGridDbGridsResponse = {
 
 export class SteamGridDbError extends Error {}
 
+export type CoverCandidate = {
+	id: number;
+	url: string;
+	mime: string;
+	author: string | null;
+};
+
 function getApiKey(): string {
 	if (!env.STEAMGRIDDB_API_KEY) {
 		throw new SteamGridDbError('STEAMGRIDDB_API_KEY ist nicht konfiguriert.');
@@ -27,7 +34,7 @@ function getApiKey(): string {
  * Fetches the grid (cover) list for a SteamGridDB game ID.
  * https://www.steamgriddb.com/api/v2#tag/GRIDS/operation/getGridsByGameId
  */
-async function fetchTopGrid(gameId: number): Promise<SteamGridDbGrid> {
+async function fetchGrids(gameId: number): Promise<SteamGridDbGrid[]> {
 	const apiKey = getApiKey();
 
 	const listResponse = await fetch(`https://www.steamgriddb.com/api/v2/grids/game/${gameId}`, {
@@ -44,32 +51,66 @@ async function fetchTopGrid(gameId: number): Promise<SteamGridDbGrid> {
 	if (!list.success) {
 		throw new SteamGridDbError(list.errors?.join(', ') ?? 'SteamGridDB-Anfrage fehlgeschlagen.');
 	}
-	const grid = list.data?.[0];
-	if (!grid) {
-		throw new SteamGridDbError(`Keine Grids für Game-ID ${gameId} gefunden.`);
-	}
-	return grid;
+	return list.data ?? [];
 }
 
-function coverLicenseFor(grid: SteamGridDbGrid): string {
-	return `SteamGridDB — https://www.steamgriddb.com/grid/${grid.id}${
-		grid.author?.name ? ` (von ${grid.author.name})` : ''
+/** Top N grid (cover) candidates for a SteamGridDB game ID, for the user to pick from. */
+export async function listCoverCandidates(gameId: number, limit = 5): Promise<CoverCandidate[]> {
+	const grids = await fetchGrids(gameId);
+	if (grids.length === 0) {
+		throw new SteamGridDbError(`Keine Grids für Game-ID ${gameId} gefunden.`);
+	}
+	return grids.slice(0, limit).map((g) => ({
+		id: g.id,
+		url: g.url,
+		mime: g.mime,
+		author: g.author?.name ?? null
+	}));
+}
+
+function coverLicenseFor(candidate: CoverCandidate): string {
+	return `SteamGridDB — https://www.steamgriddb.com/grid/${candidate.id}${
+		candidate.author ? ` (von ${candidate.author})` : ''
 	}`;
 }
 
-/** Downloads the top grid result for a SteamGridDB game ID to disk. */
+/** Only ever download images from SteamGridDB's own CDN, never an arbitrary client-supplied host. */
+function isTrustedSteamGridDbUrl(url: string): boolean {
+	try {
+		return new URL(url).hostname.endsWith('.steamgriddb.com');
+	} catch {
+		return false;
+	}
+}
+
+/** Downloads a chosen cover candidate to disk. */
+export async function downloadCandidate(
+	gameId: number,
+	candidate: CoverCandidate
+): Promise<{ coverUrl: string; coverLicense: string }> {
+	if (!isTrustedSteamGridDbUrl(candidate.url)) {
+		throw new SteamGridDbError('Ungültige Cover-URL.');
+	}
+
+	const imageResponse = await fetch(candidate.url);
+	if (!imageResponse.ok) {
+		throw new SteamGridDbError(`Bild konnte nicht heruntergeladen werden (${candidate.url}).`);
+	}
+	const bytes = Buffer.from(await imageResponse.arrayBuffer());
+	const ext = extFromMime(candidate.mime) ?? 'png';
+
+	const coverUrl = await saveCoverImage(bytes, ext, `sgdb-${gameId}-${candidate.id}`);
+	return { coverUrl, coverLicense: coverLicenseFor(candidate) };
+}
+
+/**
+ * Downloads the top grid result for a SteamGridDB game ID — used as the
+ * automatic fallback when no cover was picked via listCoverCandidates
+ * (e.g. bulk JSON import without a preview step).
+ */
 export async function downloadGridForGame(
 	gameId: number
 ): Promise<{ coverUrl: string; coverLicense: string }> {
-	const grid = await fetchTopGrid(gameId);
-
-	const imageResponse = await fetch(grid.url);
-	if (!imageResponse.ok) {
-		throw new SteamGridDbError(`Bild konnte nicht heruntergeladen werden (${grid.url}).`);
-	}
-	const bytes = Buffer.from(await imageResponse.arrayBuffer());
-	const ext = extFromMime(grid.mime) ?? 'png';
-
-	const coverUrl = await saveCoverImage(bytes, ext, `sgdb-${gameId}-${grid.id}`);
-	return { coverUrl, coverLicense: coverLicenseFor(grid) };
+	const [top] = await listCoverCandidates(gameId, 1);
+	return downloadCandidate(gameId, top);
 }

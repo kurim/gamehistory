@@ -10,7 +10,11 @@ import {
 import { parseGameFormData, parseGameLookupJson } from '$lib/server/validation';
 import { SESSION_COOKIE } from '$lib/server/auth/session';
 import { CoverUploadError, saveUploadedCover } from '$lib/server/covers';
-import { downloadGridForGame } from '$lib/server/steamgriddb';
+import {
+	downloadCandidate,
+	downloadGridForGame,
+	type CoverCandidate
+} from '$lib/server/steamgriddb';
 import { createAdminAccount, updateAppearance } from '$lib/server/db/settings';
 import { getEffectiveAdminUsername, verifyAdminCredentials } from '$lib/server/auth/password';
 import { isValidHexColor } from '$lib/theme';
@@ -58,13 +62,29 @@ export const actions: Actions = {
 		const parsed = parseGameLookupJson(raw);
 		if ('error' in parsed) return fail(400, { error: parsed.error });
 
+		// Set by the JSON-import cover preview step (client fetched candidates via
+		// /admin/api/import-preview and the admin picked one, or explicitly "kein
+		// Cover") — keyed by index into parsed.games. A missing entry means the
+		// preview step wasn't used for that game (e.g. no gameId, already had a
+		// coverUrl, or the client skipped preview entirely), so it falls back to
+		// the old automatic top-1 pick below.
+		let coverSelections: Record<string, CoverCandidate | null> = {};
+		const selectionsRaw = form.get('coverSelections');
+		if (typeof selectionsRaw === 'string' && selectionsRaw.trim()) {
+			try {
+				coverSelections = JSON.parse(selectionsRaw);
+			} catch {
+				// malformed selections — ignore and fall back to automatic behavior
+			}
+		}
+
 		const dedupeKey = (name: string, year: number) => `${name.trim().toLowerCase()}::${year}`;
 		const existing = new Set((await listNameYearPairs()).map((g) => dedupeKey(g.name, g.year)));
 
 		let imported = 0;
 		let duplicates = 0;
 		let coverFailures = 0;
-		for (const game of parsed.games) {
+		for (const [index, game] of parsed.games.entries()) {
 			const key = dedupeKey(game.name, game.year);
 			if (existing.has(key)) {
 				duplicates++;
@@ -72,7 +92,26 @@ export const actions: Actions = {
 			}
 			existing.add(key); // guards against duplicates within the same JSON batch too
 
-			if (game.gameId && !game.coverUrl) {
+			const selection = coverSelections[String(index)];
+			if (game.gameId && !game.coverUrl && selection !== undefined) {
+				if (selection) {
+					try {
+						const resolved = await downloadCandidate(game.gameId, selection);
+						game.coverUrl = resolved.coverUrl;
+						game.coverLicense = resolved.coverLicense;
+					} catch {
+						coverFailures++;
+						game.coverUrl = null;
+						game.coverLicense = null;
+						game.gameId = null;
+					}
+				} else {
+					// admin explicitly picked "kein Cover" in the preview step
+					game.coverUrl = null;
+					game.coverLicense = null;
+					game.gameId = null;
+				}
+			} else if (game.gameId && !game.coverUrl) {
 				try {
 					const resolved = await downloadGridForGame(game.gameId);
 					game.coverUrl = resolved.coverUrl;

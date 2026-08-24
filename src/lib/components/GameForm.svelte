@@ -25,6 +25,8 @@
 		error?: string | null;
 	} = $props();
 
+	type CoverCandidate = { id: number; url: string; mime: string; author: string | null };
+
 	let loading = $state(false);
 
 	// Seeded once from `initial` when the form mounts — the fields are then
@@ -35,6 +37,8 @@
 	let sgdbGameId = $state(untrack(() => (initial.gameId ? String(initial.gameId) : '')));
 	let sgdbLoading = $state(false);
 	let sgdbError = $state<string | null>(null);
+	let sgdbCandidates = $state<CoverCandidate[]>([]);
+	let sgdbSelecting = $state(false);
 
 	function onCoverUrlInput() {
 		resolvedGameId = null;
@@ -64,6 +68,7 @@
 
 		sgdbLoading = true;
 		sgdbError = null;
+		sgdbCandidates = [];
 		try {
 			const res = await fetch('/admin/api/steamgriddb', {
 				method: 'POST',
@@ -75,14 +80,38 @@
 				sgdbError = body.error ?? 'Cover konnte nicht geladen werden.';
 				return;
 			}
+			sgdbCandidates = body.candidates;
+		} catch {
+			sgdbError = 'Netzwerkfehler beim Laden der Cover-Vorschläge.';
+		} finally {
+			sgdbLoading = false;
+		}
+	}
+
+	async function selectCandidate(candidate: CoverCandidate) {
+		const gameId = Number(sgdbGameId);
+		sgdbSelecting = true;
+		sgdbError = null;
+		try {
+			const res = await fetch('/admin/api/steamgriddb/select', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ gameId, candidate })
+			});
+			const body = await res.json();
+			if (!res.ok) {
+				sgdbError = body.error ?? 'Cover konnte nicht geladen werden.';
+				return;
+			}
 			coverUrl = body.coverUrl;
 			coverLicense = body.coverLicense;
 			resolvedGameId = gameId;
+			sgdbCandidates = [];
 			clearCoverFile();
 		} catch {
 			sgdbError = 'Netzwerkfehler beim Laden des Covers.';
 		} finally {
-			sgdbLoading = false;
+			sgdbSelecting = false;
 		}
 	}
 </script>
@@ -203,11 +232,27 @@
 						onclick={fetchFromSteamGridDb}
 						class="shrink-0 rounded-lg border border-white/[0.08] px-4 py-2 text-sm font-medium text-[#f4f2fa] hover:border-accent-400/30 hover:text-accent-200 disabled:opacity-50"
 					>
-						{sgdbLoading ? 'Lädt…' : 'Cover laden'}
+						{sgdbLoading ? 'Lädt…' : 'Cover-Vorschläge laden'}
 					</button>
 				</div>
 				{#if sgdbError}
 					<p class="mt-1 text-sm text-red-300">{sgdbError}</p>
+				{/if}
+				{#if sgdbCandidates.length > 0}
+					<div class="mt-2 flex flex-wrap gap-2">
+						{#each sgdbCandidates as candidate (candidate.id)}
+							<button
+								type="button"
+								disabled={sgdbSelecting}
+								onclick={() => selectCandidate(candidate)}
+								title={candidate.author ? `von ${candidate.author}` : undefined}
+								class="h-16 w-13 shrink-0 cursor-pointer overflow-hidden rounded-md border border-white/[0.08] transition-colors hover:border-accent-400/50 disabled:opacity-50"
+							>
+								<img src={candidate.url} alt="Cover-Vorschlag" class="h-full w-full object-cover" />
+							</button>
+						{/each}
+					</div>
+					<p class="mt-1 text-xs text-[#6b6678]">Cover zur Auswahl anklicken.</p>
 				{/if}
 			</div>
 
