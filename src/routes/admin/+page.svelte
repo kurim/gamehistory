@@ -22,6 +22,53 @@
 
 	let jsonImportLoading = $state(false);
 
+	type CoverCandidate = { id: number; url: string; mime: string; author: string | null };
+	type ImportPreviewGame = {
+		name: string;
+		year: number;
+		category: string;
+		gameId: number | null;
+		coverUrl: string | null;
+		candidates: CoverCandidate[];
+		selectedIndex: number | null;
+	};
+
+	let jsonText = $state('');
+	let importPreview = $state<ImportPreviewGame[] | null>(null);
+	let importPreviewLoading = $state(false);
+	let importPreviewError = $state<string | null>(null);
+
+	async function loadImportPreview() {
+		if (!jsonText.trim()) {
+			importPreviewError = 'Bitte zuerst JSON einfügen.';
+			return;
+		}
+		importPreviewLoading = true;
+		importPreviewError = null;
+		try {
+			const res = await fetch('/admin/api/import-preview', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ json: jsonText })
+			});
+			const body = await res.json();
+			if (!res.ok) {
+				importPreviewError = body.error ?? 'Vorschau konnte nicht geladen werden.';
+				return;
+			}
+			importPreview = body.games;
+		} catch {
+			importPreviewError = 'Netzwerkfehler beim Laden der Vorschau.';
+		} finally {
+			importPreviewLoading = false;
+		}
+	}
+
+	function cancelImportPreview() {
+		importPreview = null;
+		importPreviewError = null;
+	}
+
 	// Seeded once from `data.settings` — user-editable local state afterward.
 	let siteTitle = $state(untrack(() => data.settings.siteTitle));
 	let heroHeadline = $state(untrack(() => data.settings.heroHeadline));
@@ -161,32 +208,119 @@
 						class="text-accent-300 hover:underline">game-lookups herunterladen</a
 					>
 				</p>
-				<form
-					method="POST"
-					action="?/importJson"
-					use:enhance={() => {
-						jsonImportLoading = true;
-						return async ({ update }) => {
-							jsonImportLoading = false;
-							await update();
-						};
-					}}
-					class="space-y-3"
-				>
-					<textarea
-						name="json"
-						rows="8"
-						placeholder={'{ "name": "...", "year": 2005, "category": "...", ... }\noder [{ ... }, { ... }]'}
-						class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 font-mono text-sm text-[#f4f2fa] outline-none focus:border-accent-400/50"
-						required></textarea>
-					<button
-						type="submit"
-						disabled={jsonImportLoading}
-						class="cursor-pointer rounded-lg bg-gradient-to-r from-accent-600 to-accent-500 px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+				{#if importPreview === null}
+					<div class="space-y-3">
+						<textarea
+							bind:value={jsonText}
+							rows="8"
+							placeholder={'{ "name": "...", "year": 2005, "category": "...", ... }\noder [{ ... }, { ... }]'}
+							class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 font-mono text-sm text-[#f4f2fa] outline-none focus:border-accent-400/50"
+						></textarea>
+						{#if importPreviewError}
+							<p class="text-sm text-red-300">{importPreviewError}</p>
+						{/if}
+						<button
+							type="button"
+							disabled={importPreviewLoading}
+							onclick={loadImportPreview}
+							class="cursor-pointer rounded-lg bg-gradient-to-r from-accent-600 to-accent-500 px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+						>
+							{importPreviewLoading ? 'Lädt Vorschau…' : 'Vorschau laden'}
+						</button>
+					</div>
+				{:else}
+					<form
+						method="POST"
+						action="?/importJson"
+						use:enhance={({ formData }) => {
+							jsonImportLoading = true;
+							const selections: Record<string, CoverCandidate | null> = {};
+							for (const [index, game] of importPreview!.entries()) {
+								if (game.candidates.length === 0) continue;
+								selections[index] =
+									game.selectedIndex !== null ? game.candidates[game.selectedIndex] : null;
+							}
+							formData.set('json', jsonText);
+							formData.set('coverSelections', JSON.stringify(selections));
+							return async ({ update }) => {
+								jsonImportLoading = false;
+								importPreview = null;
+								await update();
+							};
+						}}
+						class="space-y-3"
 					>
-						{jsonImportLoading ? 'Importiere…' : 'Importieren'}
-					</button>
-				</form>
+						<p class="text-sm text-[#9c97ad]">
+							{importPreview.length} Spiel(e) in der Vorschau{#if importPreview.some((g) => g.candidates.length > 0)}
+								— Cover anklicken zum Auswählen{/if}.
+						</p>
+						<ul class="max-h-[28rem] space-y-2 overflow-y-auto">
+							{#each importPreview as game, gameIndex (gameIndex)}
+								<li
+									class="flex flex-wrap items-start gap-3 rounded-lg border border-white/[0.06] p-3"
+								>
+									<div class="min-w-0 flex-1 basis-40">
+										<p class="font-medium text-[#f4f2fa]">{game.name}</p>
+										<p class="text-xs text-[#9c97ad]">{game.year} · {game.category}</p>
+									</div>
+									{#if game.candidates.length > 0}
+										<div class="flex flex-wrap items-center gap-2">
+											{#each game.candidates as candidate, candidateIndex (candidate.id)}
+												<button
+													type="button"
+													onclick={() => (game.selectedIndex = candidateIndex)}
+													title={candidate.author ? `von ${candidate.author}` : undefined}
+													class="h-14 w-11 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors {game.selectedIndex ===
+													candidateIndex
+														? 'border-accent-400'
+														: 'border-white/[0.08] hover:border-accent-400/40'}"
+												>
+													<img
+														src={candidate.url}
+														alt="Cover-Vorschlag"
+														class="h-full w-full object-cover"
+													/>
+												</button>
+											{/each}
+											<button
+												type="button"
+												onclick={() => (game.selectedIndex = null)}
+												class="shrink-0 cursor-pointer rounded-md border px-2 py-1 text-xs {game.selectedIndex ===
+												null
+													? 'border-accent-400 text-accent-200'
+													: 'border-white/[0.08] text-[#6b6678] hover:text-[#f4f2fa]'}"
+											>
+												kein Cover
+											</button>
+										</div>
+									{:else if game.coverUrl}
+										<p class="text-xs text-[#6b6678]">Cover bereits im JSON angegeben.</p>
+									{:else if game.gameId}
+										<p class="text-xs text-[#6b6678]">Keine Cover-Vorschläge gefunden.</p>
+									{:else}
+										<p class="text-xs text-[#6b6678]">Keine SteamGridDB-Game-ID.</p>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+						<div class="flex gap-3">
+							<button
+								type="submit"
+								disabled={jsonImportLoading}
+								class="cursor-pointer rounded-lg bg-gradient-to-r from-accent-600 to-accent-500 px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+							>
+								{jsonImportLoading ? 'Importiere…' : 'Import bestätigen'}
+							</button>
+							<button
+								type="button"
+								onclick={cancelImportPreview}
+								class="cursor-pointer rounded-lg border border-white/[0.08] px-5 py-2 text-sm text-[#9c97ad] hover:text-[#f4f2fa]"
+							>
+								Zurück
+							</button>
+						</div>
+					</form>
+				{/if}
 			</section>
 		{:else if activeTab === 'add'}
 			<!-- Add game -->
