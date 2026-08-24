@@ -129,34 +129,24 @@ zusätzlich `docker login ghcr.io` mit einem PAT (`read:packages`).
 `.env` und `data/` (SQLite-DB + heruntergeladene Cover) bleiben außerhalb des Images und werden
 erst beim Start eingebunden — Updates rühren Config/Daten nie an.
 
-`make setup` (im Repo-Root ausführen — dort liegen Makefile, Dockerfile und `docker-compose.yml`
-nebeneinander) richtet an einem frei wählbaren Pfad ein **eigenständiges Deploy-Verzeichnis** ein —
-dieser Pfad kann bewusst vom Repo-Checkout abweichen (z. B. Code unter `/opt/gamehistory`,
-Deploy-Daten unter `/home/docker/gamehistory`):
+Einrichtung an einem frei wählbaren Deploy-Pfad, der bewusst vom Repo-Checkout abweichen kann
+(z. B. Code unter `/opt/gamehistory`, Deploy-Daten unter `/home/docker/gamehistory`):
 
 ```bash
-make setup                              # fragt nach dem Pfad, Vorschlag /home/docker/gamehistory
-make setup DATA_PATH=/anderer/pfad      # abweichender Vorschlag für die Nachfrage
+mkdir -p /pfad/zum/deploy/data
+cp .env.example /pfad/zum/deploy/.env   # ausfüllen: DATABASE_URL, SESSION_SECRET, ORIGIN, PORT
+cp docker-compose.yml /pfad/zum/deploy/
+cd /pfad/zum/deploy && docker compose pull && docker compose up -d
 ```
 
-Fragt der Reihe nach: Deploy-Pfad, `ORIGIN`, `PORT` (per `ss` auf Belegung geprüft, falls
-installiert — ist er belegt, wird der nächste freie Port vorgeschlagen). Legt dort an:
+`SESSION_SECRET` z. B. mit `openssl rand -base64 48` erzeugen. Admin-Konto danach unter `/setup`
+im Browser anlegen — kein Node/npx auf dem Zielhost nötig.
 
-- `data/` — SQLite-DB + heruntergeladene Cover
-- `.env` — generiert, mit zufälligem `SESSION_SECRET`; Admin-Konto legst du danach unter `/setup`
-  im Browser an, kein Node/npx auf dem Zielhost nötig
-- `docker-compose.yml` — eine Kopie der Repo-Version, referenziert nur das GHCR-Image
-  (`ghcr.io/kurim/gamehistory:latest`), braucht also keinen Build-Kontext
-
-Pullt anschließend das Image und fragt, ob der Container direkt gestartet werden soll. Vorhandene
-`.env`/`docker-compose.yml` im Deploy-Verzeichnis werden nie überschrieben — mehrfaches
-`make setup` ist safe.
-
-**Wichtig:** Da das Deploy-Verzeichnis seine eigene `docker-compose.yml` (+ `.env` + `data/`) hat,
-laufen alle weiteren `docker compose`-Befehle dort, nicht im Repo:
+Da das Deploy-Verzeichnis seine eigene `docker-compose.yml` (+ `.env` + `data/`) hat, laufen alle
+weiteren `docker compose`-Befehle dort, nicht im Repo:
 
 ```bash
-cd /home/docker/gamehistory   # oder dein gewählter Pfad
+cd /pfad/zum/deploy
 docker compose restart
 docker compose logs -f
 docker compose down
@@ -168,18 +158,6 @@ Kein `--project-directory` oder sonstige Sonderflags nötig — ganz normale Com
 Neu deployen nach Code-Änderungen (Push auf `main` löst den GHCR-Build automatisch aus):
 
 ```bash
-make update                             # pullt das neueste Image, startet den Container neu
-make update DATA_PATH=/anderer/pfad     # falls abweichend vom Standardpfad
-```
-
-entspricht `cd <deploy-pfad> && docker compose pull && docker compose up -d`.
-
-Alternativ manuell, ohne `make setup`:
-
-```bash
-cp .env.example /pfad/zum/deploy/.env   # ausfüllen, siehe oben
-cp docker-compose.yml /pfad/zum/deploy/
-mkdir -p /pfad/zum/deploy/data
 cd /pfad/zum/deploy && docker compose pull && docker compose up -d
 ```
 

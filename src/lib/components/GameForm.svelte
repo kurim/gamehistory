@@ -152,15 +152,23 @@
 
 	<div class="flex gap-4 sm:col-span-2">
 		<div
-			class="flex h-24 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.03]"
+			class="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.03]"
 		>
 			{#if uploadPreviewUrl}
-				<img src={uploadPreviewUrl} alt="Cover-Vorschau" class="h-full w-full object-cover" />
+				<img
+					src={uploadPreviewUrl}
+					alt="Cover-Vorschau"
+					class="absolute inset-0 h-full w-full object-cover"
+				/>
 			{:else if coverUrl}
-				<img src={coverUrl} alt="Cover-Vorschau" class="h-full w-full object-cover" />
+				<img
+					src={coverUrl}
+					alt="Cover-Vorschau"
+					class="absolute inset-0 h-full w-full object-cover"
+				/>
 			{:else}
 				<svg
-					class="h-8 w-8 text-[#6b6678]"
+					class="absolute inset-0 m-auto h-8 w-8 text-[#6b6678]"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"

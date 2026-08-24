@@ -8,18 +8,18 @@
 	class="group flex gap-4 rounded-2xl border border-white/[0.08] bg-[#12101d]/70 p-5 backdrop-blur-md transition-colors hover:border-accent-400/30"
 >
 	<div
-		class="flex h-24 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.03]"
+		class="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.03]"
 	>
 		{#if game.coverUrl}
 			<img
 				src={game.coverUrl}
 				alt="Cover von {game.name}"
-				class="h-full w-full object-cover"
+				class="absolute inset-0 h-full w-full object-cover"
 				loading="lazy"
 			/>
 		{:else}
 			<svg
-				class="h-8 w-8 text-[#6b6678]"
+				class="absolute inset-0 m-auto h-8 w-8 text-[#6b6678]"
 				fill="none"
 				viewBox="0 0 24 24"
 				stroke="currentColor"
