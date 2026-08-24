@@ -183,19 +183,19 @@
 
 	<div class="flex gap-4 sm:col-span-2">
 		<div
-			class="relative h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.03]"
+			class="relative h-[122px] w-[82px] shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.03]"
 		>
 			{#if uploadPreviewUrl}
 				<img
 					src={uploadPreviewUrl}
 					alt="Cover-Vorschau"
-					class="absolute inset-0 h-full w-full object-cover"
+					class="absolute inset-0 aspect-[2/3] object-cover"
 				/>
 			{:else if coverUrl}
 				<img
 					src={coverUrl}
 					alt="Cover-Vorschau"
-					class="absolute inset-0 h-full w-full object-cover"
+					class="absolute inset-0 aspect-[2/3] object-cover"
 				/>
 			{:else}
 				<svg
