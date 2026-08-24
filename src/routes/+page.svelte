@@ -141,7 +141,7 @@
 			</p>
 		{:else}
 			<!-- Timeline body -->
-			<main class="mx-auto max-w-5xl px-6 py-12">
+			<main class="mx-auto max-w-[96rem] px-6 py-12">
 				{#each filteredDecades as d (d.decade)}
 					<section
 						id="decade-{d.decade}"
@@ -158,7 +158,7 @@
 								<h3 class="mb-3 text-sm font-semibold tracking-wide text-accent-300/80 uppercase">
 									{y.year}
 								</h3>
-								<div class="grid gap-3 sm:grid-cols-2">
+								<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 									{#each y.games as game (game.id)}
 										<GameCard {game} />
 									{/each}
