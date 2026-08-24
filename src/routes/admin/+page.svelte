@@ -38,7 +38,10 @@
 <div class="min-h-screen bg-canvas px-6 py-10 text-[#f4f2fa]">
 	<div class="mx-auto max-w-5xl">
 		<div class="mb-6 flex items-center justify-between">
-			<h1 class="text-2xl font-bold">Admin</h1>
+			<h1 class="flex items-baseline gap-2 text-2xl font-bold">
+				Admin
+				<span class="text-xs font-normal text-[#6b6678]">v{data.appVersion}</span>
+			</h1>
 			<div class="flex items-center gap-3">
 				<a href={resolve('/')} class="text-sm text-[#9c97ad] hover:text-accent-300"
 					>Zeitstrahl ansehen</a
