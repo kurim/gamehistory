@@ -3,6 +3,7 @@ name: Build and publish Docker image
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 env:
@@ -17,6 +18,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history + tags, needed for `git describe` to find the
+          # nearest release tag below.
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -28,15 +33,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine app version and image tags
+        id: meta
+        run: |
+          # Exactly on a release tag (vX.Y.Z push) -> "vX.Y.Z".
+          # Commits since the last tag -> "vX.Y.Z-N-gSHA" (git describe's own format).
+          # No tags in the repo yet -> falls back to the short commit sha.
+          version=$(git describe --tags --always)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # `latest` always tracks main's HEAD. A `vX.Y.Z` push additionally
+          # publishes an immutable tag pinned to that release, but never
+          # touches `latest` itself — tags aren't necessarily cut from main's
+          # current HEAD, and `latest` should only ever move forward with it.
+          tags="${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            tags="$tags
+          ${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+          else
+            tags="$tags
+          ${{ env.IMAGE_NAME }}:latest"
+          fi
+          {
+            echo "tags<<EOF"
+            echo "$tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           build-args: |
-            GIT_SHA=${{ github.sha }}
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            APP_VERSION=${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
