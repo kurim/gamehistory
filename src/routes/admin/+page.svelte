@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
 	import GameForm from '$lib/components/GameForm.svelte';
+	import CoverCandidatePreview from '$lib/components/CoverCandidatePreview.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -37,6 +38,10 @@
 	let importPreview = $state<ImportPreviewGame[] | null>(null);
 	let importPreviewLoading = $state(false);
 	let importPreviewError = $state<string | null>(null);
+	let previewSelection = $state<{ game: ImportPreviewGame; candidateIndex: number } | null>(null);
+	let previewCandidate = $derived(
+		previewSelection ? previewSelection.game.candidates[previewSelection.candidateIndex] : null
+	);
 
 	async function loadImportPreview() {
 		if (!jsonText.trim()) {
@@ -268,7 +273,7 @@
 											{#each game.candidates as candidate, candidateIndex (candidate.id)}
 												<button
 													type="button"
-													onclick={() => (game.selectedIndex = candidateIndex)}
+													onclick={() => (previewSelection = { game, candidateIndex })}
 													title={candidate.author ? `von ${candidate.author}` : undefined}
 													class="h-15 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors {game.selectedIndex ===
 													candidateIndex
@@ -581,3 +586,11 @@
 		{/if}
 	</div>
 </div>
+
+<CoverCandidatePreview
+	candidate={previewCandidate}
+	onSelect={() => {
+		if (previewSelection) previewSelection.game.selectedIndex = previewSelection.candidateIndex;
+	}}
+	onClose={() => (previewSelection = null)}
+/>

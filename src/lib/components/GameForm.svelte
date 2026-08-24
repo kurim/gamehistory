@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
+	import CoverCandidatePreview from '$lib/components/CoverCandidatePreview.svelte';
 
 	let {
 		categories,
@@ -39,6 +40,7 @@
 	let sgdbError = $state<string | null>(null);
 	let sgdbCandidates = $state<CoverCandidate[]>([]);
 	let sgdbSelecting = $state(false);
+	let previewCandidate = $state<CoverCandidate | null>(null);
 
 	function onCoverUrlInput() {
 		resolvedGameId = null;
@@ -244,7 +246,7 @@
 							<button
 								type="button"
 								disabled={sgdbSelecting}
-								onclick={() => selectCandidate(candidate)}
+								onclick={() => (previewCandidate = candidate)}
 								title={candidate.author ? `von ${candidate.author}` : undefined}
 								class="h-15 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border border-white/[0.08] transition-colors hover:border-accent-400/50 disabled:opacity-50"
 							>
@@ -346,3 +348,9 @@
 		</button>
 	</div>
 </form>
+
+<CoverCandidatePreview
+	candidate={previewCandidate}
+	onSelect={(candidate) => selectCandidate(candidate)}
+	onClose={() => (previewCandidate = null)}
+/>
