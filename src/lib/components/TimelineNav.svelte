@@ -32,14 +32,20 @@
 			.map((d) => document.getElementById(`decade-${d.decade}`))
 			.filter((el): el is HTMLElement => el !== null);
 
+		// Tracks every decade currently inside the observer band, not just the
+		// one that most recently entered — otherwise activeDecade gets stuck on
+		// the last-seen decade once none are intersecting anymore (e.g. after
+		// scrolling back above the first section via "Nach oben scrollen").
+		const intersecting = new Set<number>();
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
-					if (entry.isIntersecting) {
-						const decade = Number(entry.target.getAttribute('data-decade'));
-						activeDecade = decade;
-					}
+					const decade = Number(entry.target.getAttribute('data-decade'));
+					if (entry.isIntersecting) intersecting.add(decade);
+					else intersecting.delete(decade);
 				}
+				activeDecade = intersecting.size > 0 ? Math.min(...intersecting) : null;
 			},
 			{ rootMargin: '-15% 0px -70% 0px', threshold: 0 }
 		);
