@@ -190,12 +190,83 @@ export const actions: Actions = {
 			});
 			imported++;
 		}
+
+		// Partial-update-only entries (just `name` + one or more fields, no
+		// year/category) patch an existing game matched by title — used to
+		// bulk-fill a single field (e.g. steamAppId) across already-imported
+		// games without re-supplying everything else.
+		let partialUpdated = 0;
+		let partialUnchanged = 0;
+		let partialNotFound = 0;
+		let partialAmbiguous = 0;
+		if (parsed.partialUpdates.length > 0) {
+			const byName = new Map<string, MergeRecord[]>();
+			for (const g of existingByKey.values()) {
+				const nameKey = g.name.trim().toLowerCase();
+				const list = byName.get(nameKey);
+				if (list) list.push(g);
+				else byName.set(nameKey, [g]);
+			}
+
+			for (const update of parsed.partialUpdates) {
+				const matches = byName.get(update.name.trim().toLowerCase()) ?? [];
+				if (matches.length === 0) {
+					partialNotFound++;
+					continue;
+				}
+				if (matches.length > 1) {
+					// Same title, multiple years in the DB — can't tell which one
+					// the update is meant for, so skip rather than guess.
+					partialAmbiguous++;
+					continue;
+				}
+				const existingGame = matches[0];
+				const patch: Partial<MergeRecord> = {};
+				if (!existingGame.wikipediaUrl && update.wikipediaUrl) {
+					patch.wikipediaUrl = update.wikipediaUrl;
+				}
+				if (!existingGame.steamAppId && update.steamAppId) {
+					patch.steamAppId = update.steamAppId;
+				}
+				if (!existingGame.description && update.description) {
+					patch.description = update.description;
+				}
+				if (!existingGame.coverUrl && !existingGame.gameId) {
+					if (update.gameId) {
+						try {
+							const resolved = await downloadGridForGame(update.gameId);
+							patch.coverUrl = resolved.coverUrl;
+							patch.coverLicense = resolved.coverLicense;
+							patch.gameId = update.gameId;
+						} catch {
+							coverFailures++;
+						}
+					} else if (update.coverUrl) {
+						patch.coverUrl = update.coverUrl;
+						if (update.coverLicense) patch.coverLicense = update.coverLicense;
+					}
+				}
+
+				if (Object.keys(patch).length > 0) {
+					await updateGame(existingGame.id, patch);
+					Object.assign(existingGame, patch);
+					partialUpdated++;
+				} else {
+					partialUnchanged++;
+				}
+			}
+		}
+
 		return {
 			success: true,
 			imported,
 			skipped: parsed.skipped,
 			updated,
 			unchanged,
+			partialUpdated,
+			partialUnchanged,
+			partialNotFound,
+			partialAmbiguous,
 			coverFailures
 		};
 	},

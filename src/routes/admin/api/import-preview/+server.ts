@@ -39,5 +39,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		})
 	);
 
-	return json({ games, skipped: parsed.skipped });
+	return json({
+		games,
+		partialUpdates: parsed.partialUpdates.map((u) => u.name),
+		skipped: parsed.skipped
+	});
 };
