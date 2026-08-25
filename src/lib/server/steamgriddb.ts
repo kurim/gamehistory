@@ -33,13 +33,19 @@ function getApiKey(): string {
 /**
  * Fetches the grid (cover) list for a SteamGridDB game ID.
  * https://www.steamgriddb.com/api/v2#tag/GRIDS/operation/getGridsByGameId
+ *
+ * Restricted to the 600x900 (2:3) portrait dimension — the only one SteamGridDB
+ * offers that's an exact match for the app's cover aspect ratio. Without this,
+ * the API also returns banner-style (460x215, 920x430) and square (512x512,
+ * 1024x1024) grids, which get visibly cropped/distorted by object-cover.
  */
 async function fetchGrids(gameId: number): Promise<SteamGridDbGrid[]> {
 	const apiKey = getApiKey();
 
-	const listResponse = await fetch(`https://www.steamgriddb.com/api/v2/grids/game/${gameId}`, {
-		headers: { Authorization: `Bearer ${apiKey}` }
-	});
+	const listResponse = await fetch(
+		`https://www.steamgriddb.com/api/v2/grids/game/${gameId}?dimensions=600x900`,
+		{ headers: { Authorization: `Bearer ${apiKey}` } }
+	);
 
 	if (!listResponse.ok) {
 		throw new SteamGridDbError(
@@ -58,7 +64,9 @@ async function fetchGrids(gameId: number): Promise<SteamGridDbGrid[]> {
 export async function listCoverCandidates(gameId: number, limit = 5): Promise<CoverCandidate[]> {
 	const grids = await fetchGrids(gameId);
 	if (grids.length === 0) {
-		throw new SteamGridDbError(`Keine Grids für Game-ID ${gameId} gefunden.`);
+		throw new SteamGridDbError(
+			`Keine 600x900-Grids für Game-ID ${gameId} gefunden (andere Seitenverhältnisse werden ausgeblendet).`
+		);
 	}
 	return grids.slice(0, limit).map((g) => ({
 		id: g.id,
