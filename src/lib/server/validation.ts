@@ -54,6 +54,8 @@ type LookupGame = {
 	GameID?: unknown;
 	gameId?: unknown;
 	wikipediaUrl?: unknown;
+	steamAppId?: unknown;
+	steamId?: unknown;
 	steamUrl?: unknown;
 	steamdbUrl?: unknown;
 	description?: unknown;
@@ -68,13 +70,14 @@ function parseLookupGameId(e: LookupGame): number | null {
 }
 
 /**
- * The skill sends just the numeric Steam App-ID in `steamUrl`/`steamdbUrl`
- * (same ID for both — the app builds the actual store/SteamDB links from
- * it), mirroring how `coverUrl` carries a bare SteamGridDB/IGDB ID. Also
- * tolerates a full URL containing the app id, in case a caller sends one.
+ * The skill sends just the numeric Steam App-ID as `steamAppId` — the app
+ * builds the actual store/SteamDB links from it, mirroring how `coverUrl`
+ * carries a bare SteamGridDB/IGDB ID. Also accepts `steamId` and the older
+ * `steamUrl`/`steamdbUrl` field names (pre-dating the single-field format),
+ * and tolerates a full URL containing the app id, for robustness.
  */
 function parseSteamAppId(e: LookupGame): number | null {
-	const raw = e.steamUrl ?? e.steamdbUrl;
+	const raw = e.steamAppId ?? e.steamId ?? e.steamUrl ?? e.steamdbUrl;
 	if (typeof raw === 'number' && Number.isInteger(raw)) return raw;
 	if (typeof raw !== 'string') return null;
 	const trimmed = raw.trim();
