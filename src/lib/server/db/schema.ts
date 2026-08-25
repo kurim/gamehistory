@@ -9,6 +9,8 @@ export const games = sqliteTable('games', {
 	coverLicense: text('cover_license'),
 	gameId: integer('game_id'),
 	wikipediaUrl: text('wikipedia_url'),
+	steamUrl: text('steam_url'),
+	steamdbUrl: text('steamdb_url'),
 	description: text('description'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()

@@ -19,6 +19,8 @@
 			coverLicense?: string | null;
 			gameId?: number | null;
 			wikipediaUrl?: string | null;
+			steamUrl?: string | null;
+			steamdbUrl?: string | null;
 			description?: string | null;
 		};
 		action?: string;
@@ -323,6 +325,28 @@
 			name="wikipediaUrl"
 			type="url"
 			value={initial.wikipediaUrl ?? ''}
+			class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
+		/>
+	</div>
+
+	<div>
+		<label for="steamUrl" class="mb-1 block text-sm text-[#9c97ad]">Steam-URL</label>
+		<input
+			id="steamUrl"
+			name="steamUrl"
+			type="url"
+			value={initial.steamUrl ?? ''}
+			class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
+		/>
+	</div>
+
+	<div>
+		<label for="steamdbUrl" class="mb-1 block text-sm text-[#9c97ad]">SteamDB-URL</label>
+		<input
+			id="steamdbUrl"
+			name="steamdbUrl"
+			type="url"
+			value={initial.steamdbUrl ?? ''}
 			class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
 		/>
 	</div>
