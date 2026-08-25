@@ -1,0 +1,1 @@
+ALTER TABLE `games` ADD `steam_app_id` integer;

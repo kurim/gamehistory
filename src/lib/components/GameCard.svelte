@@ -14,8 +14,16 @@
 				label: 'SteamGridDB',
 				icon: '/sgdb.svg'
 			},
-			game.steamUrl && { href: game.steamUrl, label: 'Steam', icon: '/steam.svg' },
-			game.steamdbUrl && { href: game.steamdbUrl, label: 'SteamDB', icon: '/steamdb.svg' }
+			game.steamAppId && {
+				href: `https://store.steampowered.com/app/${game.steamAppId}/`,
+				label: 'Steam',
+				icon: '/steam.svg'
+			},
+			game.steamAppId && {
+				href: `https://steamdb.info/app/${game.steamAppId}/`,
+				label: 'SteamDB',
+				icon: '/steamdb.svg'
+			}
 		].filter((l): l is { href: string; label: string; icon: string } => Boolean(l))
 	);
 </script>

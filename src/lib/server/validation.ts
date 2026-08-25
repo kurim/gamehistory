@@ -6,8 +6,7 @@ export type GameInput = {
 	coverLicense: string | null;
 	gameId: number | null;
 	wikipediaUrl: string | null;
-	steamUrl: string | null;
-	steamdbUrl: string | null;
+	steamAppId: number | null;
 	description: string | null;
 };
 
@@ -29,6 +28,9 @@ export function parseGameFormData(form: FormData): GameInput | { error: string }
 	const gameIdRaw = str(form.get('gameId'));
 	const gameId = gameIdRaw && /^\d+$/.test(gameIdRaw) ? Number(gameIdRaw) : null;
 
+	const steamAppIdRaw = str(form.get('steamAppId'));
+	const steamAppId = steamAppIdRaw && /^\d+$/.test(steamAppIdRaw) ? Number(steamAppIdRaw) : null;
+
 	return {
 		name,
 		year: Number(yearRaw),
@@ -37,8 +39,7 @@ export function parseGameFormData(form: FormData): GameInput | { error: string }
 		coverLicense: str(form.get('coverLicense')),
 		gameId,
 		wikipediaUrl: str(form.get('wikipediaUrl')),
-		steamUrl: str(form.get('steamUrl')),
-		steamdbUrl: str(form.get('steamdbUrl')),
+		steamAppId,
 		description: str(form.get('description'))
 	};
 }
@@ -64,6 +65,22 @@ function parseLookupGameId(e: LookupGame): number | null {
 	if (typeof raw === 'number' && Number.isInteger(raw)) return raw;
 	if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return Number(raw.trim());
 	return null;
+}
+
+/**
+ * The skill sends just the numeric Steam App-ID in `steamUrl`/`steamdbUrl`
+ * (same ID for both — the app builds the actual store/SteamDB links from
+ * it), mirroring how `coverUrl` carries a bare SteamGridDB/IGDB ID. Also
+ * tolerates a full URL containing the app id, in case a caller sends one.
+ */
+function parseSteamAppId(e: LookupGame): number | null {
+	const raw = e.steamUrl ?? e.steamdbUrl;
+	if (typeof raw === 'number' && Number.isInteger(raw)) return raw;
+	if (typeof raw !== 'string') return null;
+	const trimmed = raw.trim();
+	if (/^\d+$/.test(trimmed)) return Number(trimmed);
+	const match = trimmed.match(/\/app\/(\d+)/);
+	return match ? Number(match[1]) : null;
 }
 
 export type GameLookupImportResult = { games: GameInput[]; skipped: number };
@@ -118,8 +135,7 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 			coverLicense: (typeof e.coverLicense === 'string' && e.coverLicense.trim()) || null,
 			gameId: parseLookupGameId(e),
 			wikipediaUrl: (typeof e.wikipediaUrl === 'string' && e.wikipediaUrl.trim()) || null,
-			steamUrl: (typeof e.steamUrl === 'string' && e.steamUrl.trim()) || null,
-			steamdbUrl: (typeof e.steamdbUrl === 'string' && e.steamdbUrl.trim()) || null,
+			steamAppId: parseSteamAppId(e),
 			description
 		});
 	}

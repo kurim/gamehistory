@@ -19,8 +19,7 @@
 			coverLicense?: string | null;
 			gameId?: number | null;
 			wikipediaUrl?: string | null;
-			steamUrl?: string | null;
-			steamdbUrl?: string | null;
+			steamAppId?: number | null;
 			description?: string | null;
 		};
 		action?: string;
@@ -330,25 +329,18 @@
 	</div>
 
 	<div>
-		<label for="steamUrl" class="mb-1 block text-sm text-[#9c97ad]">Steam-URL</label>
+		<label for="steamAppId" class="mb-1 block text-sm text-[#9c97ad]">Steam App-ID</label>
 		<input
-			id="steamUrl"
-			name="steamUrl"
-			type="url"
-			value={initial.steamUrl ?? ''}
+			id="steamAppId"
+			name="steamAppId"
+			type="number"
+			placeholder="z. B. 354430"
+			value={initial.steamAppId ?? ''}
 			class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
 		/>
-	</div>
-
-	<div>
-		<label for="steamdbUrl" class="mb-1 block text-sm text-[#9c97ad]">SteamDB-URL</label>
-		<input
-			id="steamdbUrl"
-			name="steamdbUrl"
-			type="url"
-			value={initial.steamdbUrl ?? ''}
-			class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
-		/>
+		<p class="mt-1 text-xs text-[#6b6678]">
+			Steam- und SteamDB-Link werden daraus automatisch gebaut.
+		</p>
 	</div>
 
 	<div class="sm:col-span-2">
