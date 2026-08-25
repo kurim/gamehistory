@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { Game } from '$lib/server/db/schema';
 	import ImageLightbox from '$lib/components/ImageLightbox.svelte';
+	import { versioned } from '$lib/cacheBust';
 
 	let { game }: { game: Game } = $props();
 
@@ -77,7 +79,7 @@
 						class="flex h-9 w-9 cursor-pointer items-center justify-center justify-self-center rounded-full border border-white/[0.08] transition-colors hover:border-accent-400/40 hover:bg-accent-500/10"
 					>
 						<img
-							src={link.icon}
+							src={versioned(link.icon, page.data.appVersion)}
 							alt={link.label}
 							class="h-4 w-4 {link.icon === '/sgdb.svg' || link.icon === '/steam.svg'
 								? ''
