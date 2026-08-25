@@ -86,13 +86,37 @@ function parseSteamAppId(e: LookupGame): number | null {
 	return match ? Number(match[1]) : null;
 }
 
-export type GameLookupImportResult = { games: GameInput[]; skipped: number };
+/**
+ * A bare `{ name, ...one-or-more-fields }` entry — no `year`/`category`, so it
+ * can't create a new game, but it names an existing one (matched by title) to
+ * patch specific fields on, e.g. bulk-adding `steamAppId` to already-imported
+ * games without re-supplying everything else.
+ */
+export type GamePartialUpdate = {
+	name: string;
+	coverUrl: string | null;
+	coverLicense: string | null;
+	gameId: number | null;
+	wikipediaUrl: string | null;
+	steamAppId: number | null;
+	description: string | null;
+};
+
+export type GameLookupImportResult = {
+	games: GameInput[];
+	partialUpdates: GamePartialUpdate[];
+	skipped: number;
+};
 
 /**
  * Entries that are `null` or missing required fields are skipped rather than
  * aborting the whole import — the `game-lookups` (multi-title) skill returns
  * a `null` placeholder for titles it couldn't resolve, keeping array
  * positions stable, and that shouldn't sink the rest of the batch.
+ *
+ * An entry with a `name` but no `year`/`category` is treated as a partial
+ * update for an existing game (matched by title) rather than skipped, as
+ * long as it carries at least one field worth patching.
  */
 export function parseGameLookupJson(raw: string): GameLookupImportResult | { error: string } {
 	let parsed: unknown;
@@ -106,6 +130,7 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 	if (entries.length === 0) return { error: 'JSON enthält keine Einträge.' };
 
 	const games: GameInput[] = [];
+	const partialUpdates: GamePartialUpdate[] = [];
 	let skipped = 0;
 	for (const entry of entries) {
 		if (typeof entry !== 'object' || entry === null) {
@@ -117,11 +142,6 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 		const category = typeof e.category === 'string' ? e.category.trim() : '';
 		const year = typeof e.year === 'number' ? e.year : Number(e.year);
 
-		if (!name || !category || !Number.isFinite(year)) {
-			skipped++;
-			continue;
-		}
-
 		const description =
 			(typeof e.description === 'string' && e.description.trim()) ||
 			(typeof e.note === 'string' && e.note.trim()) ||
@@ -129,21 +149,51 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 
 		const coverUrlStr = typeof e.coverUrl === 'string' ? e.coverUrl.trim() : '';
 		const coverUrlIsRealUrl = coverUrlStr.length > 0 && !/^\d+$/.test(coverUrlStr);
+		const coverUrl = coverUrlIsRealUrl ? coverUrlStr : null;
+		const coverLicense = (typeof e.coverLicense === 'string' && e.coverLicense.trim()) || null;
+		const gameId = parseLookupGameId(e);
+		const wikipediaUrl = (typeof e.wikipediaUrl === 'string' && e.wikipediaUrl.trim()) || null;
+		const steamAppId = parseSteamAppId(e);
 
-		games.push({
-			name,
-			year,
-			category,
-			coverUrl: coverUrlIsRealUrl ? coverUrlStr : null,
-			coverLicense: (typeof e.coverLicense === 'string' && e.coverLicense.trim()) || null,
-			gameId: parseLookupGameId(e),
-			wikipediaUrl: (typeof e.wikipediaUrl === 'string' && e.wikipediaUrl.trim()) || null,
-			steamAppId: parseSteamAppId(e),
-			description
-		});
+		if (!name) {
+			skipped++;
+			continue;
+		}
+
+		if (category && Number.isFinite(year)) {
+			games.push({
+				name,
+				year,
+				category,
+				coverUrl,
+				coverLicense,
+				gameId,
+				wikipediaUrl,
+				steamAppId,
+				description
+			});
+			continue;
+		}
+
+		if (coverUrl || gameId || wikipediaUrl || steamAppId || description) {
+			partialUpdates.push({
+				name,
+				coverUrl,
+				coverLicense,
+				gameId,
+				wikipediaUrl,
+				steamAppId,
+				description
+			});
+			continue;
+		}
+
+		skipped++;
 	}
 
-	if (games.length === 0) return { error: 'Keine gültigen Einträge im JSON gefunden.' };
+	if (games.length === 0 && partialUpdates.length === 0) {
+		return { error: 'Keine gültigen Einträge im JSON gefunden.' };
+	}
 
-	return { games, skipped };
+	return { games, partialUpdates, skipped };
 }

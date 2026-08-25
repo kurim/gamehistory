@@ -63,6 +63,7 @@
 
 	let jsonText = $state('');
 	let importPreview = $state<ImportPreviewGame[] | null>(null);
+	let importPreviewPartialUpdates = $state<string[]>([]);
 	let importPreviewLoading = $state(false);
 	let importPreviewError = $state<string | null>(null);
 	let previewSelection = $state<{ game: ImportPreviewGame; candidateIndex: number } | null>(null);
@@ -89,6 +90,7 @@
 				return;
 			}
 			importPreview = body.games;
+			importPreviewPartialUpdates = body.partialUpdates ?? [];
 		} catch {
 			importPreviewError = 'Netzwerkfehler beim Laden der Vorschau.';
 		} finally {
@@ -98,6 +100,7 @@
 
 	function cancelImportPreview() {
 		importPreview = null;
+		importPreviewPartialUpdates = [];
 		importPreviewError = null;
 	}
 
@@ -197,6 +200,16 @@
 					{form.updated} bestehende(s) Spiel(e) ergänzt (fehlende Felder aufgefüllt).
 				{/if}{#if 'unchanged' in form && form.unchanged}
 					{form.unchanged} bereits vollständig (Name + Jahr vorhanden, nichts zu ergänzen).
+				{/if}{#if 'partialUpdated' in form && form.partialUpdated}
+					{form.partialUpdated} Spiel(e) per Nur-Update-Eintrag ergänzt.
+				{/if}{#if 'partialUnchanged' in form && form.partialUnchanged}
+					{form.partialUnchanged} Nur-Update-Eintrag/-Einträge ohne Änderung (bereits vollständig).
+				{/if}{#if 'partialNotFound' in form && form.partialNotFound}
+					{form.partialNotFound} Nur-Update-Eintrag/-Einträge ohne Treffer (kein Spiel mit diesem Namen
+					gefunden).
+				{/if}{#if 'partialAmbiguous' in form && form.partialAmbiguous}
+					{form.partialAmbiguous} Nur-Update-Eintrag/-Einträge übersprungen (Name mehrfach vorhanden,
+					Jahr fehlt zur Zuordnung).
 				{/if}{#if 'skipped' in form && form.skipped}
 					{form.skipped} Eintrag/Einträge übersprungen (ungültig oder nicht auflösbar).
 				{/if}{#if 'coverFailures' in form && form.coverFailures}
@@ -227,7 +240,11 @@
 					JSON aus dem <code class="text-accent-300">game-lookup</code>-Skill (ein Titel, liefert
 					ein einzelnes Objekt) oder <code class="text-accent-300">game-lookups</code>-Skill
 					(mehrere kommagetrennte Titel, liefert ein Array) einfügen — beide Formate werden
-					unterstützt.
+					unterstützt. Einträge ohne <code class="text-accent-300">year</code>/<code
+						class="text-accent-300">category</code
+					>, z. B. nur <code class="text-accent-300">{'{ "name": "...", "steamId": "..." }'}</code>,
+					aktualisieren stattdessen ein bereits vorhandenes Spiel mit passendem Namen (füllt nur
+					leere Felder auf).
 					<a
 						href="/game-lookup.skill"
 						download
@@ -285,9 +302,18 @@
 						class="space-y-3"
 					>
 						<p class="text-sm text-[#9c97ad]">
-							{importPreview.length} Spiel(e) in der Vorschau{#if importPreview.some((g) => g.candidates.length > 0)}
-								— Cover anklicken zum Auswählen{/if}.
+							{importPreview.length} neue(s) Spiel(e){#if importPreview.some((g) => g.candidates.length > 0)}
+								— Cover anklicken zum Auswählen{/if}{#if importPreviewPartialUpdates.length > 0},
+								{importPreviewPartialUpdates.length} Update(s) für bestehende Spiele{/if}.
 						</p>
+						{#if importPreviewPartialUpdates.length > 0}
+							<div class="rounded-lg border border-white/[0.06] p-3 text-xs text-[#9c97ad]">
+								<p class="mb-1 font-medium text-[#f4f2fa]">
+									Nur-Update-Einträge (Match über Name, füllt fehlende Felder auf):
+								</p>
+								<p>{importPreviewPartialUpdates.join(', ')}</p>
+							</div>
+						{/if}
 						<ul class="max-h-[28rem] space-y-2 overflow-y-auto">
 							{#each importPreview as game, gameIndex (gameIndex)}
 								<li
