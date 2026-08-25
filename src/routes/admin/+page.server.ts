@@ -103,6 +103,9 @@ export const actions: Actions = {
 				if (!existingGame.steamAppId && game.steamAppId) {
 					patch.steamAppId = game.steamAppId;
 				}
+				if (!existingGame.gogSlug && game.gogSlug) {
+					patch.gogSlug = game.gogSlug;
+				}
 				if (!existingGame.description && game.description) {
 					patch.description = game.description;
 				}
@@ -186,6 +189,7 @@ export const actions: Actions = {
 				gameId: created.gameId,
 				wikipediaUrl: created.wikipediaUrl,
 				steamAppId: created.steamAppId,
+				gogSlug: created.gogSlug,
 				description: created.description
 			});
 			imported++;
@@ -227,6 +231,9 @@ export const actions: Actions = {
 				}
 				if (!existingGame.steamAppId && update.steamAppId) {
 					patch.steamAppId = update.steamAppId;
+				}
+				if (!existingGame.gogSlug && update.gogSlug) {
+					patch.gogSlug = update.gogSlug;
 				}
 				if (!existingGame.description && update.description) {
 					patch.description = update.description;

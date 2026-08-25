@@ -20,6 +20,7 @@
 			gameId?: number | null;
 			wikipediaUrl?: string | null;
 			steamAppId?: number | null;
+			gogSlug?: string | null;
 			description?: string | null;
 		};
 		action?: string;
@@ -340,6 +341,21 @@
 		/>
 		<p class="mt-1 text-xs text-[#6b6678]">
 			Steam- und SteamDB-Link werden daraus automatisch gebaut.
+		</p>
+	</div>
+
+	<div>
+		<label for="gogSlug" class="mb-1 block text-sm text-[#9c97ad]">GOG-Slug</label>
+		<input
+			id="gogSlug"
+			name="gogSlug"
+			type="text"
+			placeholder="z. B. silver"
+			value={initial.gogSlug ?? ''}
+			class="w-full rounded-lg border border-white/[0.08] bg-canvas px-3 py-2 text-[#f4f2fa] outline-none focus:border-accent-400/50"
+		/>
+		<p class="mt-1 text-xs text-[#6b6678]">
+			Aus der GOG-URL <code>gog.com/game/&lbrace;slug&rbrace;</code> — auch eine volle URL wird akzeptiert.
 		</p>
 	</div>
 

@@ -9,12 +9,13 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	type MissingField = 'cover' | 'steamAppId' | 'wikipediaUrl' | 'description';
+	type MissingField = 'cover' | 'steamAppId' | 'gogSlug' | 'wikipediaUrl' | 'description';
 
 	function missingFields(game: PageData['games'][number]): MissingField[] {
 		const missing: MissingField[] = [];
 		if (!game.coverUrl) missing.push('cover');
 		if (!game.steamAppId) missing.push('steamAppId');
+		if (!game.gogSlug) missing.push('gogSlug');
 		if (!game.wikipediaUrl) missing.push('wikipediaUrl');
 		if (!game.description) missing.push('description');
 		return missing;
@@ -23,6 +24,7 @@
 	const missingFieldLabels: Record<MissingField, string> = {
 		cover: 'Cover fehlt',
 		steamAppId: 'Steam-ID fehlt',
+		gogSlug: 'GOG-Slug fehlt',
 		wikipediaUrl: 'Wikipedia-Link fehlt',
 		description: 'Beschreibung fehlt'
 	};
@@ -653,6 +655,8 @@
 														</svg>
 													{:else if field === 'steamAppId'}
 														<img src="/steam.svg" alt="" class="h-3 w-3" />
+													{:else if field === 'gogSlug'}
+														<img src="/gog.svg" alt="" class="h-3 w-3" />
 													{:else if field === 'wikipediaUrl'}
 														<img src="/wikipedia.svg" alt="" class="h-3 w-3" />
 													{:else}
