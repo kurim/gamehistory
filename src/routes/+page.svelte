@@ -74,7 +74,7 @@
 		</div>
 
 		{#if data.categoryStats.length > 0}
-			<div class="mx-auto mt-8 flex max-w-[92vw] flex-wrap items-center justify-center gap-2">
+			<div class="mx-auto mt-8 flex max-w-[96rem] flex-wrap items-center justify-center gap-2">
 				{#each data.categoryStats as stat (stat.category)}
 					<button
 						type="button"
