@@ -7,6 +7,7 @@ export type GameInput = {
 	gameId: number | null;
 	wikipediaUrl: string | null;
 	steamAppId: number | null;
+	gogSlug: string | null;
 	description: string | null;
 };
 
@@ -40,8 +41,22 @@ export function parseGameFormData(form: FormData): GameInput | { error: string }
 		gameId,
 		wikipediaUrl: str(form.get('wikipediaUrl')),
 		steamAppId,
+		gogSlug: normalizeGogSlug(str(form.get('gogSlug'))),
 		description: str(form.get('description'))
 	};
+}
+
+/**
+ * GOG store URLs look like `gog.com/en/game/{slug}` or `gog.com/game/{slug}`
+ * — the slug itself is lowercase with underscores. Accepts a bare slug or a
+ * full URL and normalizes to just the slug, mirroring the Steam App-ID
+ * handling.
+ */
+function normalizeGogSlug(raw: string | null): string | null {
+	if (!raw) return null;
+	const match = raw.match(/\/game\/([a-z0-9_]+)/i);
+	const slug = match ? match[1] : raw;
+	return slug.trim().toLowerCase() || null;
 }
 
 /** Schema expected from the `game-lookup` skill's JSON output. */
@@ -58,6 +73,8 @@ type LookupGame = {
 	steamId?: unknown;
 	steamUrl?: unknown;
 	steamdbUrl?: unknown;
+	gogSlug?: unknown;
+	gogUrl?: unknown;
 	description?: unknown;
 	note?: unknown;
 };
@@ -86,6 +103,12 @@ function parseSteamAppId(e: LookupGame): number | null {
 	return match ? Number(match[1]) : null;
 }
 
+/** Accepts `gogSlug` or the older/alternate `gogUrl`, tolerating a full GOG store URL. */
+function parseGogSlug(e: LookupGame): string | null {
+	const raw = e.gogSlug ?? e.gogUrl;
+	return typeof raw === 'string' ? normalizeGogSlug(raw) : null;
+}
+
 /**
  * A bare `{ name, ...one-or-more-fields }` entry — no `year`/`category`, so it
  * can't create a new game, but it names an existing one (matched by title) to
@@ -99,6 +122,7 @@ export type GamePartialUpdate = {
 	gameId: number | null;
 	wikipediaUrl: string | null;
 	steamAppId: number | null;
+	gogSlug: string | null;
 	description: string | null;
 };
 
@@ -154,6 +178,7 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 		const gameId = parseLookupGameId(e);
 		const wikipediaUrl = (typeof e.wikipediaUrl === 'string' && e.wikipediaUrl.trim()) || null;
 		const steamAppId = parseSteamAppId(e);
+		const gogSlug = parseGogSlug(e);
 
 		if (!name) {
 			skipped++;
@@ -170,12 +195,13 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 				gameId,
 				wikipediaUrl,
 				steamAppId,
+				gogSlug,
 				description
 			});
 			continue;
 		}
 
-		if (coverUrl || gameId || wikipediaUrl || steamAppId || description) {
+		if (coverUrl || gameId || wikipediaUrl || steamAppId || gogSlug || description) {
 			partialUpdates.push({
 				name,
 				coverUrl,
@@ -183,6 +209,7 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 				gameId,
 				wikipediaUrl,
 				steamAppId,
+				gogSlug,
 				description
 			});
 			continue;

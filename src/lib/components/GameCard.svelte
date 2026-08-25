@@ -25,6 +25,11 @@
 				href: `https://steamdb.info/app/${game.steamAppId}/`,
 				label: 'SteamDB',
 				icon: '/steamdb.svg'
+			},
+			game.gogSlug && {
+				href: `https://www.gog.com/game/${game.gogSlug}`,
+				label: 'GOG',
+				icon: '/gog.svg'
 			}
 		].filter((l): l is { href: string; label: string; icon: string } => Boolean(l))
 	);

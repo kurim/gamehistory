@@ -41,6 +41,7 @@ export async function listGamesForImportMerge() {
 			gameId: games.gameId,
 			wikipediaUrl: games.wikipediaUrl,
 			steamAppId: games.steamAppId,
+			gogSlug: games.gogSlug,
 			description: games.description
 		})
 		.from(games);
