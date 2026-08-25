@@ -20,7 +20,7 @@ export async function createGame(data: Omit<NewGame, 'id' | 'createdAt'>) {
 	return created;
 }
 
-export async function updateGame(id: number, data: Omit<NewGame, 'id' | 'createdAt'>) {
+export async function updateGame(id: number, data: Partial<Omit<NewGame, 'id' | 'createdAt'>>) {
 	const [updated] = await db.update(games).set(data).where(eq(games.id, id)).returning();
 	return updated;
 }
@@ -29,9 +29,21 @@ export async function deleteGame(id: number) {
 	await db.delete(games).where(eq(games.id, id));
 }
 
-/** Lightweight fetch for duplicate-detection during import — avoids pulling full rows. */
-export async function listNameYearPairs() {
-	return db.select({ name: games.name, year: games.year }).from(games);
+/** Lightweight fetch for duplicate-detection/merging during import — avoids pulling created-at etc. */
+export async function listGamesForImportMerge() {
+	return db
+		.select({
+			id: games.id,
+			name: games.name,
+			year: games.year,
+			coverUrl: games.coverUrl,
+			coverLicense: games.coverLicense,
+			gameId: games.gameId,
+			wikipediaUrl: games.wikipediaUrl,
+			steamAppId: games.steamAppId,
+			description: games.description
+		})
+		.from(games);
 }
 
 export async function listCategories() {

@@ -4,8 +4,9 @@ import {
 	createGame,
 	deleteGame,
 	listCategories,
+	listGamesForImportMerge,
 	listGamesNewestFirst,
-	listNameYearPairs
+	updateGame
 } from '$lib/server/db/queries';
 import { parseGameFormData, parseGameLookupJson } from '$lib/server/validation';
 import { SESSION_COOKIE } from '$lib/server/auth/session';
@@ -79,18 +80,70 @@ export const actions: Actions = {
 		}
 
 		const dedupeKey = (name: string, year: number) => `${name.trim().toLowerCase()}::${year}`;
-		const existing = new Set((await listNameYearPairs()).map((g) => dedupeKey(g.name, g.year)));
+		type MergeRecord = Awaited<ReturnType<typeof listGamesForImportMerge>>[number];
+		const existingByKey = new Map<string, MergeRecord>(
+			(await listGamesForImportMerge()).map((g) => [dedupeKey(g.name, g.year), g])
+		);
 
 		let imported = 0;
-		let duplicates = 0;
+		let updated = 0;
+		let unchanged = 0;
 		let coverFailures = 0;
 		for (const [index, game] of parsed.games.entries()) {
 			const key = dedupeKey(game.name, game.year);
-			if (existing.has(key)) {
-				duplicates++;
+			const existingGame = existingByKey.get(key);
+
+			if (existingGame) {
+				// Only fill fields that are currently empty in the DB — never
+				// overwrite a value already set (incl. by manual admin edits).
+				const patch: Partial<MergeRecord> = {};
+				if (!existingGame.wikipediaUrl && game.wikipediaUrl) {
+					patch.wikipediaUrl = game.wikipediaUrl;
+				}
+				if (!existingGame.steamAppId && game.steamAppId) {
+					patch.steamAppId = game.steamAppId;
+				}
+				if (!existingGame.description && game.description) {
+					patch.description = game.description;
+				}
+
+				if (!existingGame.coverUrl && !existingGame.gameId) {
+					const selection = coverSelections[String(index)];
+					if (game.gameId && !game.coverUrl && selection !== undefined) {
+						if (selection) {
+							try {
+								const resolved = await downloadCandidate(game.gameId, selection);
+								patch.coverUrl = resolved.coverUrl;
+								patch.coverLicense = resolved.coverLicense;
+								patch.gameId = game.gameId;
+							} catch {
+								coverFailures++;
+							}
+						}
+					} else if (game.gameId && !game.coverUrl) {
+						try {
+							const resolved = await downloadGridForGame(game.gameId);
+							patch.coverUrl = resolved.coverUrl;
+							patch.coverLicense = resolved.coverLicense;
+							patch.gameId = game.gameId;
+						} catch {
+							coverFailures++;
+						}
+					} else if (game.coverUrl) {
+						patch.coverUrl = game.coverUrl;
+						if (game.coverLicense) patch.coverLicense = game.coverLicense;
+					}
+				}
+
+				if (Object.keys(patch).length > 0) {
+					await updateGame(existingGame.id, patch);
+					Object.assign(existingGame, patch);
+					updated++;
+				} else {
+					unchanged++;
+				}
 				continue;
 			}
-			existing.add(key); // guards against duplicates within the same JSON batch too
 
 			const selection = coverSelections[String(index)];
 			if (game.gameId && !game.coverUrl && selection !== undefined) {
@@ -123,14 +176,26 @@ export const actions: Actions = {
 					game.gameId = null;
 				}
 			}
-			await createGame(game);
+			const created = await createGame(game);
+			existingByKey.set(key, {
+				id: created.id,
+				name: created.name,
+				year: created.year,
+				coverUrl: created.coverUrl,
+				coverLicense: created.coverLicense,
+				gameId: created.gameId,
+				wikipediaUrl: created.wikipediaUrl,
+				steamAppId: created.steamAppId,
+				description: created.description
+			});
 			imported++;
 		}
 		return {
 			success: true,
 			imported,
 			skipped: parsed.skipped,
-			duplicates,
+			updated,
+			unchanged,
 			coverFailures
 		};
 	},
