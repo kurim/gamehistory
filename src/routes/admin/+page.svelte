@@ -2,19 +2,46 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import GameForm from '$lib/components/GameForm.svelte';
 	import CoverCandidatePreview from '$lib/components/CoverCandidatePreview.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	type MissingField = 'cover' | 'steamAppId' | 'wikipediaUrl' | 'description';
+
+	function missingFields(game: PageData['games'][number]): MissingField[] {
+		const missing: MissingField[] = [];
+		if (!game.coverUrl) missing.push('cover');
+		if (!game.steamAppId) missing.push('steamAppId');
+		if (!game.wikipediaUrl) missing.push('wikipediaUrl');
+		if (!game.description) missing.push('description');
+		return missing;
+	}
+
+	const missingFieldLabels: Record<MissingField, string> = {
+		cover: 'Cover fehlt',
+		steamAppId: 'Steam-ID fehlt',
+		wikipediaUrl: 'Wikipedia-Link fehlt',
+		description: 'Beschreibung fehlt'
+	};
+
 	let sortDir = $state<'asc' | 'desc'>('desc');
 	let filterCategory = $state('');
 	let searchQuery = $state('');
+	let missingFilter = new SvelteSet<MissingField>();
+
+	function toggleMissingFilter(field: MissingField) {
+		if (missingFilter.has(field)) missingFilter.delete(field);
+		else missingFilter.add(field);
+	}
+
 	let sortedGames = $derived(
 		data.games
 			.filter((g) => filterCategory === '' || g.category === filterCategory)
 			.filter((g) => g.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+			.filter((g) => missingFilter.size === 0 || missingFields(g).some((f) => missingFilter.has(f)))
 			.sort((a, b) => (sortDir === 'asc' ? a.year - b.year : b.year - a.year))
 	);
 
@@ -503,7 +530,9 @@
 					class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] p-4"
 				>
 					<h2 class="text-lg font-semibold">
-						Alle Spiele ({sortedGames.length}{filterCategory || searchQuery.trim()
+						Alle Spiele ({sortedGames.length}{filterCategory ||
+						searchQuery.trim() ||
+						missingFilter.size > 0
 							? ` von ${data.games.length}`
 							: ''})
 					</h2>
@@ -532,6 +561,31 @@
 						</button>
 					</div>
 				</div>
+				<div class="flex flex-wrap items-center gap-2 border-b border-white/[0.08] px-4 py-3">
+					<span class="text-xs text-[#6b6678]">Fehlende Angaben:</span>
+					{#each Object.entries(missingFieldLabels) as [field, label] (field)}
+						<button
+							type="button"
+							onclick={() => toggleMissingFilter(field as MissingField)}
+							class="cursor-pointer rounded-full border px-3 py-1 text-xs transition-colors {missingFilter.has(
+								field as MissingField
+							)
+								? 'border-accent-400/50 bg-accent-500/25 text-accent-100'
+								: 'border-white/[0.08] text-[#9c97ad] hover:border-accent-400/30 hover:text-[#f4f2fa]'}"
+						>
+							{label}
+						</button>
+					{/each}
+					{#if missingFilter.size > 0}
+						<button
+							type="button"
+							onclick={() => missingFilter.clear()}
+							class="cursor-pointer rounded-full border border-white/[0.08] px-3 py-1 text-xs text-[#6b6678] hover:text-[#f4f2fa]"
+						>
+							Filter zurücksetzen ✕
+						</button>
+					{/if}
+				</div>
 
 				<div class="overflow-x-auto">
 					<table class="w-full text-left text-sm">
@@ -540,6 +594,7 @@
 								<th class="px-4 py-2 font-medium">Jahr</th>
 								<th class="px-4 py-2 font-medium">Name</th>
 								<th class="px-4 py-2 font-medium">Kategorie</th>
+								<th class="px-4 py-2 font-medium">Status</th>
 								<th class="px-4 py-2 font-medium"></th>
 							</tr>
 						</thead>
@@ -549,6 +604,50 @@
 									<td class="px-4 py-2 text-[#9c97ad] tabular-nums">{game.year}</td>
 									<td class="px-4 py-2 font-medium text-[#f4f2fa]">{game.name}</td>
 									<td class="px-4 py-2 text-[#9c97ad]">{game.category}</td>
+									<td class="px-4 py-2">
+										<div class="flex items-center gap-1">
+											{#each missingFields(game) as field (field)}
+												<span
+													title={missingFieldLabels[field]}
+													class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-300"
+												>
+													{#if field === 'cover'}
+														<svg
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="1.5"
+															class="h-3 w-3"
+														>
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																d="M2.25 15.75l5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 8.25A2.25 2.25 0 0 1 5.25 6h13.5A2.25 2.25 0 0 1 21 8.25v7.5a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15.75v-7.5Z"
+															/>
+														</svg>
+													{:else if field === 'steamAppId'}
+														<img src="/steam.svg" alt="" class="h-3 w-3" />
+													{:else if field === 'wikipediaUrl'}
+														<img src="/wikipedia.svg" alt="" class="h-3 w-3" />
+													{:else}
+														<svg
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="1.5"
+															class="h-3 w-3"
+														>
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+															/>
+														</svg>
+													{/if}
+												</span>
+											{/each}
+										</div>
+									</td>
 									<td class="px-4 py-2 text-right whitespace-nowrap">
 										<a
 											href={resolve('/admin/games/[id]/edit', { id: String(game.id) })}
@@ -570,11 +669,13 @@
 								</tr>
 							{:else}
 								<tr>
-									<td colspan="4" class="px-4 py-8 text-center text-[#6b6678]">
+									<td colspan="5" class="px-4 py-8 text-center text-[#6b6678]">
 										{#if data.games.length === 0}
 											Noch keine Spiele erfasst.
 										{:else if searchQuery.trim()}
 											Keine Spiele gefunden für „{searchQuery.trim()}“.
+										{:else if missingFilter.size > 0}
+											Keine Spiele mit fehlenden Angaben in diesem Filter.
 										{:else}
 											Keine Spiele in dieser Kategorie.
 										{/if}
