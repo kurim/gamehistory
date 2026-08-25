@@ -1,0 +1,41 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        # Same placeholder DATABASE_URL as the Docker build (Dockerfile) —
+        # SvelteKit's postbuild analysis imports every server module, and
+        # db/index.ts eagerly requires DATABASE_URL to construct the sqlite
+        # client. The real value is only needed at runtime, not for a build.
+        env:
+          DATABASE_URL: file:./build-analysis-placeholder.db
+        run: npm run build
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
