@@ -6,6 +6,8 @@ export type GameInput = {
 	coverLicense: string | null;
 	gameId: number | null;
 	wikipediaUrl: string | null;
+	steamUrl: string | null;
+	steamdbUrl: string | null;
 	description: string | null;
 };
 
@@ -35,6 +37,8 @@ export function parseGameFormData(form: FormData): GameInput | { error: string }
 		coverLicense: str(form.get('coverLicense')),
 		gameId,
 		wikipediaUrl: str(form.get('wikipediaUrl')),
+		steamUrl: str(form.get('steamUrl')),
+		steamdbUrl: str(form.get('steamdbUrl')),
 		description: str(form.get('description'))
 	};
 }
@@ -49,6 +53,8 @@ type LookupGame = {
 	GameID?: unknown;
 	gameId?: unknown;
 	wikipediaUrl?: unknown;
+	steamUrl?: unknown;
+	steamdbUrl?: unknown;
 	description?: unknown;
 	note?: unknown;
 };
@@ -112,6 +118,8 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 			coverLicense: (typeof e.coverLicense === 'string' && e.coverLicense.trim()) || null,
 			gameId: parseLookupGameId(e),
 			wikipediaUrl: (typeof e.wikipediaUrl === 'string' && e.wikipediaUrl.trim()) || null,
+			steamUrl: (typeof e.steamUrl === 'string' && e.steamUrl.trim()) || null,
+			steamdbUrl: (typeof e.steamdbUrl === 'string' && e.steamdbUrl.trim()) || null,
 			description
 		});
 	}

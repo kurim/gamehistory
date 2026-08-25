@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 128 128" aria-hidden="true">
+	<defs>
+		<linearGradient id="steam-bg" x1="64" y1="0" x2="64" y2="128" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#0a1730" />
+			<stop offset="1" stop-color="#1a6fb0" />
+		</linearGradient>
+	</defs>
+	<circle cx="64" cy="64" r="64" fill="url(#steam-bg)" />
+	<path
+		fill="#fff"
+		fill-rule="evenodd"
+		d="M89 33a19 19 0 1 0 0 38 19 19 0 0 0 0-38Zm0 9a10 10 0 1 1 0 20 10 10 0 0 1 0-20Z"
+	/>
+	<path
+		fill="#fff"
+		d="m78 62-24 24a13.6 13.6 0 1 0 3.8 8.7L82 70.5 78 62Z"
+	/>
+	<path
+		fill="url(#steam-bg)"
+		fill-rule="evenodd"
+		d="M45.6 94.6a7 7 0 1 1-9.9-9.9 7 7 0 0 1 9.9 9.9Z"
+	/>
+</svg>
