@@ -3,6 +3,7 @@
 	import TimelineNav from '$lib/components/TimelineNav.svelte';
 	import GameCard from '$lib/components/GameCard.svelte';
 	import BackToTop from '$lib/components/BackToTop.svelte';
+	import { versioned } from '$lib/cacheBust';
 
 	let { data } = $props();
 
@@ -112,7 +113,7 @@
 			class="absolute top-2 left-1/2 flex h-16 w-16 -translate-x-1/2 items-center justify-center overflow-hidden rounded-full border border-accent-300/20"
 		>
 			<img
-				src="/logo-512.png"
+				src={versioned('/logo-512.png', data.appVersion)}
 				alt=""
 				class="-mt-1.5 h-[74px] w-[74px] max-w-none shrink-0 object-cover"
 			/>

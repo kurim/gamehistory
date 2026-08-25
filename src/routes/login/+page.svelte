@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { versioned } from '$lib/cacheBust';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -19,7 +20,7 @@
 	<div
 		class="relative w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[#12101d]/80 p-8 shadow-2xl backdrop-blur-xl"
 	>
-		<img src="/logo-512.png" alt="" class="mx-auto mb-4 h-14 w-14" />
+		<img src={versioned('/logo-512.png', data.appVersion)} alt="" class="mx-auto mb-4 h-14 w-14" />
 		<h1 class="mb-6 text-center text-xl font-bold text-[#f4f2fa]">Admin-Login</h1>
 
 		<form
