@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
+
 	type DecadeNav = {
 		decade: number;
 		label: string;
@@ -36,7 +38,7 @@
 		// one that most recently entered — otherwise activeDecade gets stuck on
 		// the last-seen decade once none are intersecting anymore (e.g. after
 		// scrolling back above the first section via "Nach oben scrollen").
-		const intersecting = new Set<number>();
+		const intersecting = new SvelteSet<number>();
 
 		const observer = new IntersectionObserver(
 			(entries) => {
