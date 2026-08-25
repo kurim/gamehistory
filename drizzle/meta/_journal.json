@@ -15,6 +15,20 @@
       "when": 1787645744320,
       "tag": "0001_needy_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787651817661,
+      "tag": "0002_organic_mongoose",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787651827132,
+      "tag": "0003_brave_gorilla_man",
+      "breakpoints": true
     }
   ]
 }
