@@ -48,14 +48,16 @@ jobs:
           # most recently released version — but never touches `latest`
           # itself, since tags aren't necessarily cut from main's current
           # HEAD and `latest` should only ever move forward with it.
-          tags="${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          #
+          # Deliberately NOT tagging every push with the raw commit sha —
+          # that tag would never get cleaned up and just accumulates
+          # forever in the registry (see the "cleanup" job below for the
+          # untagged-attestation counterpart of the same problem).
           if [ "${{ github.ref_type }}" = "tag" ]; then
-            tags="$tags
-          ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            tags="${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           ${{ env.IMAGE_NAME }}:stable"
           else
-            tags="$tags
-          ${{ env.IMAGE_NAME }}:latest"
+            tags="${{ env.IMAGE_NAME }}:latest"
           fi
           {
             echo "tags<<EOF"
@@ -73,3 +75,23 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Without these, buildx auto-attaches a provenance/SBOM attestation
+          # manifest to every push, which shows up in GHCR as an untagged,
+          # unreferenced "version" that never gets cleaned up — that's most
+          # of what the cleanup job below prunes away.
+          provenance: false
+          sbom: false
+
+  cleanup:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete untagged image versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: true
