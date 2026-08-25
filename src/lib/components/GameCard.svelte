@@ -71,7 +71,9 @@
 						<img
 							src={link.icon}
 							alt={link.label}
-							class="h-4 w-4 {link.icon === '/sgdb.svg' ? '' : 'invert'}"
+							class="h-4 w-4 {link.icon === '/sgdb.svg' || link.icon === '/steam.svg'
+								? ''
+								: 'invert'}"
 						/>
 					</a>
 				{/each}
