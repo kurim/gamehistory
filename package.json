@@ -46,7 +46,8 @@
 	"dependencies": {
 		"argon2": "^0.45.1",
 		"better-sqlite3": "^13.0.2",
-		"jose": "^6.2.10"
+		"jose": "^6.2.10",
+		"sharp": "^0.35.4"
 	},
 	"overrides": {
 		"cookie": "^0.7.2",

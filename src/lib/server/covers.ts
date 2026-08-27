@@ -1,7 +1,52 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 
 export const COVERS_DIR = path.resolve('data/covers');
+const THUMBS_DIR = path.join(COVERS_DIR, '.thumbs');
+
+/**
+ * Widths the app actually requests cover thumbnails at (grid cards render
+ * covers at 82px CSS width — 200px covers a 2x/retina display with margin).
+ * Kept as a fixed allowlist rather than an arbitrary query param so the
+ * on-disk thumbnail cache can't be inflated by requesting arbitrary sizes.
+ */
+export const ALLOWED_THUMB_WIDTHS = [200] as const;
+export type ThumbWidth = (typeof ALLOWED_THUMB_WIDTHS)[number];
+
+/**
+ * Resizes a stored cover down to `width` (height auto, aspect preserved) and
+ * caches the result as webp under data/covers/.thumbs/ — covers are
+ * otherwise stored and served at their original resolution, which wastes
+ * bandwidth and load time for the small grid thumbnails. Returns `null` if
+ * the source cover doesn't exist.
+ */
+export async function getCoverThumbnail(
+	filename: string,
+	width: ThumbWidth
+): Promise<{ bytes: Buffer; mime: string } | null> {
+	const thumbPath = path.join(THUMBS_DIR, `${width}-${filename}.webp`);
+	try {
+		return { bytes: await readFile(thumbPath), mime: 'image/webp' };
+	} catch {
+		// not cached yet — fall through and generate it
+	}
+
+	let original: Buffer;
+	try {
+		original = await readFile(path.join(COVERS_DIR, filename));
+	} catch {
+		return null;
+	}
+
+	const bytes = await sharp(original)
+		.resize({ width, withoutEnlargement: true })
+		.webp({ quality: 80 })
+		.toBuffer();
+	await mkdir(THUMBS_DIR, { recursive: true });
+	await writeFile(thumbPath, bytes);
+	return { bytes, mime: 'image/webp' };
+}
 
 const MIME_TO_EXT: Record<string, string> = {
 	'image/png': 'png',

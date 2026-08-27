@@ -3,6 +3,7 @@
 	import type { Game } from '$lib/server/db/schema';
 	import ImageLightbox from '$lib/components/ImageLightbox.svelte';
 	import { versioned } from '$lib/cacheBust';
+	import { coverThumbUrl } from '$lib/covers';
 
 	let { game }: { game: Game } = $props();
 
@@ -49,7 +50,7 @@
 		>
 			{#if game.coverUrl}
 				<img
-					src={game.coverUrl}
+					src={coverThumbUrl(game.coverUrl)}
 					alt="Cover von {game.name}"
 					class="absolute inset-0 aspect-[2/3] object-cover"
 					loading="lazy"
