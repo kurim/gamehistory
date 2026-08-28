@@ -27,7 +27,7 @@
 	}}
 	class="m-auto max-w-[90vw] rounded-2xl border border-white/[0.08] bg-[#12101d] p-2 backdrop:bg-black/70"
 >
-	{#if src}
+	{#if open && src}
 		<img {src} {alt} class="max-h-[85vh] max-w-full rounded-lg object-contain" />
 	{/if}
 </dialog>
