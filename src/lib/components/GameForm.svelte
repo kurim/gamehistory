@@ -28,7 +28,13 @@
 		error?: string | null;
 	} = $props();
 
-	type CoverCandidate = { id: number; url: string; mime: string; author: string | null };
+	type CoverCandidate = {
+		id: number;
+		url: string;
+		mime: string;
+		author: string | null;
+		source: 'sgdb' | 'steam';
+	};
 
 	let loading = $state(false);
 

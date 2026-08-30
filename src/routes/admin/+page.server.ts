@@ -16,6 +16,7 @@ import {
 	downloadGridForGame,
 	type CoverCandidate
 } from '$lib/server/steamgriddb';
+import { downloadSteamCdnImage } from '$lib/server/steamCdnImage';
 import { createAdminAccount, updateAppearance } from '$lib/server/db/settings';
 import { getEffectiveAdminUsername, verifyAdminCredentials } from '$lib/server/auth/password';
 import { isValidHexColor } from '$lib/theme';
@@ -93,6 +94,9 @@ export const actions: Actions = {
 			const key = dedupeKey(game.name, game.year);
 			const existingGame = existingByKey.get(key);
 
+			const steamCdnImageUrl = parsed.gameCoverCandidates[index];
+			const filenameHint = () => String(game.steamAppId ?? `${game.name}-${index}`);
+
 			if (existingGame) {
 				// Only fill fields that are currently empty in the DB — never
 				// overwrite a value already set (incl. by manual admin edits).
@@ -112,13 +116,16 @@ export const actions: Actions = {
 
 				if (!existingGame.coverUrl && !existingGame.gameId) {
 					const selection = coverSelections[String(index)];
-					if (game.gameId && !game.coverUrl && selection !== undefined) {
+					if (!game.coverUrl && selection !== undefined) {
 						if (selection) {
 							try {
-								const resolved = await downloadCandidate(game.gameId, selection);
+								const resolved =
+									selection.source === 'steam'
+										? await downloadSteamCdnImage(selection.url, filenameHint())
+										: await downloadCandidate(game.gameId!, selection);
 								patch.coverUrl = resolved.coverUrl;
 								patch.coverLicense = resolved.coverLicense;
-								patch.gameId = game.gameId;
+								if (selection.source !== 'steam') patch.gameId = game.gameId;
 							} catch {
 								coverFailures++;
 							}
@@ -135,6 +142,14 @@ export const actions: Actions = {
 					} else if (game.coverUrl) {
 						patch.coverUrl = game.coverUrl;
 						if (game.coverLicense) patch.coverLicense = game.coverLicense;
+					} else if (steamCdnImageUrl) {
+						try {
+							const resolved = await downloadSteamCdnImage(steamCdnImageUrl, filenameHint());
+							patch.coverUrl = resolved.coverUrl;
+							patch.coverLicense = resolved.coverLicense;
+						} catch {
+							coverFailures++;
+						}
 					}
 				}
 
@@ -149,17 +164,20 @@ export const actions: Actions = {
 			}
 
 			const selection = coverSelections[String(index)];
-			if (game.gameId && !game.coverUrl && selection !== undefined) {
+			if (!game.coverUrl && selection !== undefined) {
 				if (selection) {
 					try {
-						const resolved = await downloadCandidate(game.gameId, selection);
+						const resolved =
+							selection.source === 'steam'
+								? await downloadSteamCdnImage(selection.url, filenameHint())
+								: await downloadCandidate(game.gameId!, selection);
 						game.coverUrl = resolved.coverUrl;
 						game.coverLicense = resolved.coverLicense;
 					} catch {
 						coverFailures++;
 						game.coverUrl = null;
 						game.coverLicense = null;
-						game.gameId = null;
+						if (selection.source !== 'steam') game.gameId = null;
 					}
 				} else {
 					// admin explicitly picked "kein Cover" in the preview step
@@ -177,6 +195,14 @@ export const actions: Actions = {
 					game.coverUrl = null;
 					game.coverLicense = null;
 					game.gameId = null;
+				}
+			} else if (steamCdnImageUrl && !game.coverUrl) {
+				try {
+					const resolved = await downloadSteamCdnImage(steamCdnImageUrl, filenameHint());
+					game.coverUrl = resolved.coverUrl;
+					game.coverLicense = resolved.coverLicense;
+				} catch {
+					coverFailures++;
 				}
 			}
 			const created = await createGame(game);
@@ -212,7 +238,7 @@ export const actions: Actions = {
 				else byName.set(nameKey, [g]);
 			}
 
-			for (const update of parsed.partialUpdates) {
+			for (const [index, update] of parsed.partialUpdates.entries()) {
 				const matches = byName.get(update.name.trim().toLowerCase()) ?? [];
 				if (matches.length === 0) {
 					partialNotFound++;
@@ -239,6 +265,8 @@ export const actions: Actions = {
 					patch.description = update.description;
 				}
 				if (!existingGame.coverUrl && !existingGame.gameId) {
+					const steamCdnImageUrl = parsed.partialUpdateCoverCandidates[index];
+					const filenameHint = String(update.steamAppId ?? `${update.name}-${index}`);
 					if (update.gameId) {
 						try {
 							const resolved = await downloadGridForGame(update.gameId);
@@ -251,6 +279,14 @@ export const actions: Actions = {
 					} else if (update.coverUrl) {
 						patch.coverUrl = update.coverUrl;
 						if (update.coverLicense) patch.coverLicense = update.coverLicense;
+					} else if (steamCdnImageUrl) {
+						try {
+							const resolved = await downloadSteamCdnImage(steamCdnImageUrl, filenameHint);
+							patch.coverUrl = resolved.coverUrl;
+							patch.coverLicense = resolved.coverLicense;
+						} catch {
+							coverFailures++;
+						}
 					}
 				}
 

@@ -12,7 +12,8 @@ function parseCandidate(value: unknown): CoverCandidate | null {
 		id: c.id,
 		url: c.url,
 		mime: c.mime,
-		author: typeof c.author === 'string' ? c.author : null
+		author: typeof c.author === 'string' ? c.author : null,
+		source: 'sgdb'
 	};
 }
 
