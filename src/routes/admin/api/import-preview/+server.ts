@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { parseGameLookupJson } from '$lib/server/validation';
-import { listCoverCandidates } from '$lib/server/steamgriddb';
+import { listCoverCandidates, type CoverCandidate } from '$lib/server/steamgriddb';
 
 /**
  * Parses a JSON-import payload and, for every game with a SteamGridDB Game-ID
- * and no cover already set, resolves the top cover candidates so the admin UI
- * can show a preview to pick from before actually importing anything.
+ * and/or a Steam store CDN `Image` and no cover already set, resolves the
+ * cover candidates so the admin UI can show a preview to pick from before
+ * actually importing anything.
  */
 export const POST: RequestHandler = async ({ request }) => {
 	const body = await request.json().catch(() => null);
@@ -18,14 +19,21 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	const games = await Promise.all(
-		parsed.games.map(async (game) => {
-			let candidates: Awaited<ReturnType<typeof listCoverCandidates>> = [];
+		parsed.games.map(async (game, index) => {
+			let candidates: CoverCandidate[] = [];
 			if (game.gameId && !game.coverUrl) {
 				try {
 					candidates = await listCoverCandidates(game.gameId);
 				} catch {
 					candidates = [];
 				}
+			}
+			const steamCdnImageUrl = parsed.gameCoverCandidates[index];
+			if (steamCdnImageUrl && !game.coverUrl) {
+				candidates = [
+					...candidates,
+					{ id: -1, url: steamCdnImageUrl, mime: 'image/jpeg', author: null, source: 'steam' }
+				];
 			}
 			return {
 				name: game.name,

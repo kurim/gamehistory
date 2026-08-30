@@ -1,5 +1,11 @@
 <script lang="ts">
-	type CoverCandidate = { id: number; url: string; mime: string; author: string | null };
+	type CoverCandidate = {
+		id: number;
+		url: string;
+		mime: string;
+		author: string | null;
+		source: 'sgdb' | 'steam';
+	};
 
 	let {
 		candidate,
@@ -33,7 +39,9 @@
 			alt="Cover-Vorschau"
 			class="mx-auto aspect-[2/3] w-64 max-w-full rounded-lg object-cover"
 		/>
-		{#if candidate.author}
+		{#if candidate.source === 'steam'}
+			<p class="mt-2 text-center text-xs text-[#6b6678]">Steam-Store-CDN</p>
+		{:else if candidate.author}
 			<p class="mt-2 text-center text-xs text-[#6b6678]">von {candidate.author}</p>
 		{/if}
 		<div class="mt-4 flex justify-center gap-3">

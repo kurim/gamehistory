@@ -1,3 +1,5 @@
+import { isTrustedSteamCdnUrl } from '$lib/server/steamCdnImage';
+
 export type GameInput = {
 	name: string;
 	year: number;
@@ -75,6 +77,8 @@ type LookupGame = {
 	steamdbUrl?: unknown;
 	gogSlug?: unknown;
 	gogUrl?: unknown;
+	Image?: unknown;
+	image?: unknown;
 	description?: unknown;
 	note?: unknown;
 };
@@ -110,6 +114,20 @@ function parseGogSlug(e: LookupGame): string | null {
 }
 
 /**
+ * `Image` (or `image`) carries a direct Steam store CDN cover asset URL
+ * (e.g. a `library_600x900_2x.jpg`) — offered as an extra cover candidate
+ * alongside SteamGridDB/IGDB results, useful when a game has no SteamGridDB
+ * entry at all. Only trusted Steam CDN hosts are accepted; anything else is
+ * dropped rather than surfaced as a downloadable candidate.
+ */
+function parseSteamCdnImageUrl(e: LookupGame): string | null {
+	const raw = e.Image ?? e.image;
+	if (typeof raw !== 'string') return null;
+	const trimmed = raw.trim();
+	return trimmed && isTrustedSteamCdnUrl(trimmed) ? trimmed : null;
+}
+
+/**
  * A bare `{ name, ...one-or-more-fields }` entry — no `year`/`category`, so it
  * can't create a new game, but it names an existing one (matched by title) to
  * patch specific fields on, e.g. bulk-adding `steamAppId` to already-imported
@@ -128,7 +146,17 @@ export type GamePartialUpdate = {
 
 export type GameLookupImportResult = {
 	games: GameInput[];
+	/**
+	 * Parallel to `games` — an extra Steam store CDN cover candidate per
+	 * entry (the `Image` field), or `null`. Kept out of `GameInput` itself
+	 * since it's not a DB column: drizzle's `.values()` maps every own key of
+	 * the object it's given to a table column, so an untyped extra key would
+	 * break the insert rather than just being ignored.
+	 */
+	gameCoverCandidates: (string | null)[];
 	partialUpdates: GamePartialUpdate[];
+	/** Parallel to `partialUpdates`, same reasoning as `gameCoverCandidates`. */
+	partialUpdateCoverCandidates: (string | null)[];
 	skipped: number;
 };
 
@@ -154,7 +182,9 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 	if (entries.length === 0) return { error: 'JSON enthält keine Einträge.' };
 
 	const games: GameInput[] = [];
+	const gameCoverCandidates: (string | null)[] = [];
 	const partialUpdates: GamePartialUpdate[] = [];
+	const partialUpdateCoverCandidates: (string | null)[] = [];
 	let skipped = 0;
 	for (const entry of entries) {
 		if (typeof entry !== 'object' || entry === null) {
@@ -179,6 +209,7 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 		const wikipediaUrl = (typeof e.wikipediaUrl === 'string' && e.wikipediaUrl.trim()) || null;
 		const steamAppId = parseSteamAppId(e);
 		const gogSlug = parseGogSlug(e);
+		const steamCdnImageUrl = parseSteamCdnImageUrl(e);
 
 		if (!name) {
 			skipped++;
@@ -198,10 +229,19 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 				gogSlug,
 				description
 			});
+			gameCoverCandidates.push(steamCdnImageUrl);
 			continue;
 		}
 
-		if (coverUrl || gameId || wikipediaUrl || steamAppId || gogSlug || description) {
+		if (
+			coverUrl ||
+			gameId ||
+			wikipediaUrl ||
+			steamAppId ||
+			gogSlug ||
+			steamCdnImageUrl ||
+			description
+		) {
 			partialUpdates.push({
 				name,
 				coverUrl,
@@ -212,6 +252,7 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 				gogSlug,
 				description
 			});
+			partialUpdateCoverCandidates.push(steamCdnImageUrl);
 			continue;
 		}
 
@@ -222,5 +263,5 @@ export function parseGameLookupJson(raw: string): GameLookupImportResult | { err
 		return { error: 'Keine gültigen Einträge im JSON gefunden.' };
 	}
 
-	return { games, partialUpdates, skipped };
+	return { games, gameCoverCandidates, partialUpdates, partialUpdateCoverCandidates, skipped };
 }

@@ -21,6 +21,8 @@ export type CoverCandidate = {
 	url: string;
 	mime: string;
 	author: string | null;
+	/** 'sgdb' for a SteamGridDB grid result, 'steam' for the Steam store CDN `Image` candidate. */
+	source: 'sgdb' | 'steam';
 };
 
 function getApiKey(): string {
@@ -72,7 +74,8 @@ export async function listCoverCandidates(gameId: number, limit = 5): Promise<Co
 		id: g.id,
 		url: g.url,
 		mime: g.mime,
-		author: g.author?.name ?? null
+		author: g.author?.name ?? null,
+		source: 'sgdb' as const
 	}));
 }
 

@@ -52,7 +52,13 @@
 
 	let jsonImportLoading = $state(false);
 
-	type CoverCandidate = { id: number; url: string; mime: string; author: string | null };
+	type CoverCandidate = {
+		id: number;
+		url: string;
+		mime: string;
+		author: string | null;
+		source: 'sgdb' | 'steam';
+	};
 	type ImportPreviewGame = {
 		name: string;
 		year: number;
@@ -246,7 +252,9 @@
 						class="text-accent-300">category</code
 					>, z. B. nur <code class="text-accent-300">{'{ "name": "...", "steamId": "..." }'}</code>,
 					aktualisieren stattdessen ein bereits vorhandenes Spiel mit passendem Namen (füllt nur
-					leere Felder auf).
+					leere Felder auf). Ein <code class="text-accent-300">Image</code>-Feld
+					(Steam-Store-CDN-Bild) wird als zusätzliche Cover-Option neben den SteamGridDB-Vorschlägen
+					angeboten, erkennbar am „Steam"-Badge.
 					<a
 						href="/game-lookup.skill"
 						download
@@ -331,8 +339,12 @@
 												<button
 													type="button"
 													onclick={() => (previewSelection = { game, candidateIndex })}
-													title={candidate.author ? `von ${candidate.author}` : undefined}
-													class="h-15 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors {game.selectedIndex ===
+													title={candidate.source === 'steam'
+														? 'Steam-Store-CDN'
+														: candidate.author
+															? `von ${candidate.author}`
+															: undefined}
+													class="relative h-15 w-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors {game.selectedIndex ===
 													candidateIndex
 														? 'border-accent-400'
 														: 'border-white/[0.08] hover:border-accent-400/40'}"
@@ -342,6 +354,13 @@
 														alt="Cover-Vorschlag"
 														class="h-full w-full object-cover"
 													/>
+													{#if candidate.source === 'steam'}
+														<span
+															class="absolute inset-x-0 bottom-0 bg-[#1b2838]/90 py-0.5 text-center text-[8px] font-semibold text-[#66c0f4]"
+														>
+															Steam
+														</span>
+													{/if}
 												</button>
 											{/each}
 											<button
